@@ -1,0 +1,5 @@
+__version__ = "0.0.1"
+__author__ = "osoken"
+__description__ = "A simple document server backended by FastAPI"
+__email__ = "osoken.devel@outlook.jp"
+__package_name__ = "docserver"
