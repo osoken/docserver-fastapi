@@ -1,6 +1,6 @@
 import re
-import string
 from datetime import datetime
+from json import JSONEncoder
 from typing import Any, Union
 
 from humps import camelize
@@ -87,3 +87,13 @@ class UserRetrieveResponse(GenericCamelModel):
 
     class Config:
         orm_mode = True
+
+
+class DocServerJSONEncoder(JSONEncoder):
+    def default(self, o):
+        if isinstance(o, PasswordString):
+            return o.get_secret_value()
+        return super(DocServerJSONEncoder, self).default(o)
+
+
+json_encoder = DocServerJSONEncoder()
