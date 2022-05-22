@@ -1,15 +1,15 @@
-from typing import Generator
-from uuid import uuid4
+from typing import Any, Callable, Dict, Generator
 
 import pytest
-from docserver import config, db, models
+from docserver import config, models, schema, utils
 from docserver.app import generate_app
 from docserver.deps import SessionHandler
+from factory.alchemy import SQLAlchemyModelFactory
+from fastapi import testclient
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from pydantic_factories import ModelFactory
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.orm.session import close_all_sessions
 
 
 class TestingSession(Session):
@@ -37,6 +37,71 @@ class TestSessionHandler(SessionHandler):
             db.rollback()
         finally:
             db.close()
+
+
+class DocServerModelFactory(ModelFactory):
+    @classmethod
+    def get_provider_map(cls) -> Dict[Any, Callable]:
+        m = super().get_provider_map()
+        m[schema.PasswordString] = lambda: utils.gen_password(10)
+        return m
+
+
+class DocServerTestClient(TestClient):
+    def post(
+        self,
+        url,
+        data=None,
+        json=None,
+        *,
+        params=None,
+        headers=None,
+        cookies=None,
+        files=None,
+        auth=None,
+        timeout=None,
+        allow_redirects=None,
+        proxies=None,
+        hooks=None,
+        stream=None,
+        verify=None,
+        cert=None,
+    ):
+        if json is not None:
+            return super().post(
+                url,
+                schema.json_encoder.encode(json),
+                None,
+                params=params,
+                headers=headers,
+                cookies=cookies,
+                files=files,
+                auth=auth,
+                timeout=timeout,
+                allow_redirects=allow_redirects,
+                proxies=proxies,
+                hooks=hooks,
+                stream=stream,
+                verify=verify,
+                cert=cert,
+            )
+        return super().post(
+            url,
+            data,
+            json,
+            params=params,
+            headers=headers,
+            cookies=cookies,
+            files=files,
+            auth=auth,
+            timeout=timeout,
+            allow_redirects=allow_redirects,
+            proxies=proxies,
+            hooks=hooks,
+            stream=stream,
+            verify=verify,
+            cert=cert,
+        )
 
 
 @pytest.fixture(scope="session")
@@ -86,4 +151,24 @@ def app(db) -> Generator:
 
 @pytest.fixture(scope="function")
 def client(app) -> Generator:
-    yield TestClient(app)
+    yield DocServerTestClient(app)
+
+
+@pytest.fixture(scope="session")
+def factories(db) -> Generator:
+    sess = db.sessionmaker()
+
+    class UserCreateQueryFactory(DocServerModelFactory):
+        __model__ = schema.UserCreateQuery
+
+    class UserFactory(SQLAlchemyModelFactory):
+        class Meta:
+            model = models.User
+            sqlalchemy_session = sess
+
+    class Factories:
+        def __init__(self):
+            self.UserCreateQueryFactory = UserCreateQueryFactory
+            self.UserFactory = UserFactory
+
+    yield Factories()

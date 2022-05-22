@@ -1,0 +1,19 @@
+{
+    "editor.formatOnSave": true,
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": [
+      "--line-length",
+      "120",
+      "--skip-string-normalization",
+      "--target-version",
+      "py310"
+    ],
+    "python.sortImports.args": ["--profile", "black"],
+    "[python]": {
+      "editor.codeActionsOnSave": {
+        "source.organizeImports": true
+      }
+    },
+    "python.defaultInterpreterPath": ".venv/bin/python"
+  }
+  
