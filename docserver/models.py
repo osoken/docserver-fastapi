@@ -13,8 +13,8 @@ class User(Base):
     __tablename__ = "users"
 
     id = id_column_type
-    username = Column(String, nullable=False)
-    email = Column(String, nullable=False)
+    username = Column(String, nullable=False, unique=True)
+    email = Column(String, nullable=False, unique=True)
     disabled = Column(Boolean, default=False)
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime, nullable=False, default=gen_timestamp)

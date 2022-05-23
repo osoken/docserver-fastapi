@@ -61,7 +61,7 @@ def test_user_create_query_password_validation(password: str, expected_as_valid:
 )
 def test_user_login_query_login_id_validation(login_id: str, expected_as: str):
     try:
-        sut = schema.UserLoginQuery(login_id=login_id, password="somepassword_not_validated")
+        sut = schema.UserLoginQuery(login_id=login_id, password="s0meP@ssword")
         if expected_as == "username":
             schema.UsernameString.validate(value=login_id)
             assert sut.is_username()

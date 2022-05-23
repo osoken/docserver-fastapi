@@ -1,15 +1,18 @@
-from typing import Any, Callable, Dict, Generator
+from typing import Any, Callable, Dict, Generator, Optional
+from uuid import uuid4
 
 import pytest
 from docserver import config, models, schema, utils
 from docserver.app import generate_app
 from docserver.deps import SessionHandler
 from factory.alchemy import SQLAlchemyModelFactory
+from factory.fuzzy import FuzzyAttribute
 from fastapi import testclient
 from fastapi.testclient import TestClient
+from pydantic import BaseModel
 from pydantic_factories import ModelFactory
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 
 class TestingSession(Session):
@@ -19,11 +22,16 @@ class TestingSession(Session):
 
 
 class TestSessionHandler(SessionHandler):
+    def __init__(self, settings: Optional[config.Settings] = None):
+        super(TestSessionHandler, self).__init__(settings)
+        self._session_id = uuid4().hex
+
     @property
     def sessionmaker(self) -> sessionmaker:
         if self._sessionmaker is None:
-            self._sessionmaker = sessionmaker(
-                class_=TestingSession, autocommit=False, autoflush=False, bind=self.engine
+            self._sessionmaker = scoped_session(
+                sessionmaker(class_=TestingSession, autocommit=False, autoflush=False, bind=self.engine),
+                scopefunc=lambda: self._session_id,
             )
         return self._sessionmaker
 
@@ -85,6 +93,24 @@ class DocServerTestClient(TestClient):
                 verify=verify,
                 cert=cert,
             )
+        if data is not None and isinstance(data, BaseModel):
+            return super().post(
+                url,
+                data=schema.json_encoder.encode(data.dict()),
+                json=None,
+                params=params,
+                headers=headers,
+                cookies=cookies,
+                files=files,
+                auth=auth,
+                timeout=timeout,
+                allow_redirects=allow_redirects,
+                proxies=proxies,
+                hooks=hooks,
+                stream=stream,
+                verify=verify,
+                cert=cert,
+            )
         return super().post(
             url,
             data,
@@ -131,9 +157,13 @@ def test_db() -> Generator:
 
 
 @pytest.fixture(scope="session")
-def db(test_db) -> Generator:
-    test_settings = config.get_setting(DB_DBNAME="test")
-    test_session_handler = TestSessionHandler(settings=test_settings)
+def settings() -> Generator:
+    yield config.get_setting(DB_DBNAME="test")
+
+
+@pytest.fixture(scope="function")
+def db(test_db, settings) -> Generator:
+    test_session_handler = TestSessionHandler(settings=settings)
 
     models.Base.metadata.create_all(test_session_handler.engine)
 
@@ -142,9 +172,9 @@ def db(test_db) -> Generator:
     test_session_handler.engine.dispose()
 
 
-@pytest.fixture(scope="session")
-def app(db) -> Generator:
-    app_ = generate_app()
+@pytest.fixture(scope="function")
+def app(db, settings) -> Generator:
+    app_ = generate_app(settings)
     app_.dependency_overrides[app_.session_handler.get_db] = db.get_db
     yield app_
 
@@ -154,21 +184,40 @@ def client(app) -> Generator:
     yield DocServerTestClient(app)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def factories(db) -> Generator:
-    sess = db.sessionmaker()
-
     class UserCreateQueryFactory(DocServerModelFactory):
         __model__ = schema.UserCreateQuery
+
+    class UserLoginQueryFactory(DocServerModelFactory):
+        __model__ = schema.UserLoginQuery
 
     class UserFactory(SQLAlchemyModelFactory):
         class Meta:
             model = models.User
-            sqlalchemy_session = sess
+            sqlalchemy_session = db.sessionmaker
+            sqlalchemy_session_persistence = "commit"
+
+        hashed_password = FuzzyAttribute(lambda: schema._get_hashed_value(utils.gen_password(16)))
 
     class Factories:
         def __init__(self):
             self.UserCreateQueryFactory = UserCreateQueryFactory
             self.UserFactory = UserFactory
+            self.UserLoginQueryFactory = UserLoginQueryFactory
 
     yield Factories()
+
+    db.engine.dispose()
+
+
+@pytest.fixture(scope="function")
+def fixture_users(factories) -> Generator:
+    factories.UserFactory(
+        id="0123456789abcdefABCDEF",
+        username="testuser",
+        email="test@somewhere.com",
+        hashed_password=schema._get_hashed_value("p@ssW0rd"),
+    )
+    yield None
+    factories.UserFactory._meta.sqlalchemy_session.close()

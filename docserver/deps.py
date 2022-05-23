@@ -1,6 +1,7 @@
 from typing import Generator, Optional
 
 from sqlalchemy.engine.base import Engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
 from . import config
@@ -35,5 +36,8 @@ class SessionHandler:
         db = self.sessionmaker()
         try:
             yield db
+        except SQLAlchemyError as e:
+            assert e is not None
+            db.rollback()
         finally:
             db.close()

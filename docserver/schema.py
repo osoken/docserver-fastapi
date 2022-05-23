@@ -5,7 +5,7 @@ from typing import Any, Union
 
 from humps import camelize
 from passlib.context import CryptContext
-from pydantic import EmailStr, SecretStr, constr
+from pydantic import BaseModel, EmailStr, SecretStr, constr
 from pydantic.generics import GenericModel
 
 from .utils import suuid_generator
@@ -61,7 +61,7 @@ class UserCreateQuery(GenericCamelModel):
 
 class UserLoginQuery(GenericCamelModel):
     login_id: Union[UsernameString, EmailStr]
-    password: SecretStr
+    password: PasswordString
 
     def is_username(self) -> bool:
         try:
@@ -89,10 +89,16 @@ class UserRetrieveResponse(GenericCamelModel):
         orm_mode = True
 
 
+class TokenResponse(GenericCamelModel):
+    access_token: str
+    token_type: str
+
+
 class DocServerJSONEncoder(JSONEncoder):
     def default(self, o):
-        if isinstance(o, PasswordString):
+        if isinstance(o, SecretStr):
             return o.get_secret_value()
+
         return super(DocServerJSONEncoder, self).default(o)
 
 
