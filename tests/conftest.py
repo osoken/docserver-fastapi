@@ -200,11 +200,18 @@ def factories(db) -> Generator:
 
         hashed_password = FuzzyAttribute(lambda: schema._get_hashed_value(utils.gen_password(16)))
 
+    class RefreshTokenFactory(SQLAlchemyModelFactory):
+        class Meta:
+            model = models.RefreshToken
+            sqlalchemy_session = db.sessionmaker
+            sqlalchemy_session_persistence = "commit"
+
     class Factories:
         def __init__(self):
             self.UserCreateQueryFactory = UserCreateQueryFactory
             self.UserFactory = UserFactory
             self.UserLoginQueryFactory = UserLoginQueryFactory
+            self.RefreshTokenFactory = RefreshTokenFactory
 
     yield Factories()
 
@@ -218,6 +225,15 @@ def fixture_users(factories) -> Generator:
         username="testuser",
         email="test@somewhere.com",
         hashed_password=schema._get_hashed_value("p@ssW0rd"),
+    )
+    yield None
+    factories.UserFactory._meta.sqlalchemy_session.close()
+
+
+@pytest.fixture(scope="function")
+def fixture_refresh_token(factories, fixture_users) -> Generator:
+    factories.RefreshTokenFactory(
+        id="1234567890abcdefABCDEF", user_id="0123456789abcdefABCDEF", token="the_refresh_token"
     )
     yield None
     factories.UserFactory._meta.sqlalchemy_session.close()

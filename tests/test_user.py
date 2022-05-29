@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from unittest.mock import call
 
 import freezegun
 from fastapi import status
@@ -44,8 +45,8 @@ def test_create_user_fails_if_email_already_exists(client, factories, fixture_us
     assert response.json() == {"detail": "username and/or email already exists."}
 
 
-def test_get_token(mocker, settings, client, factories, fixture_users):
-    m = mocker.patch("docserver.operators.jwt.encode", return_value="the token")
+def test_get_token_with_generated_refresh_token(mocker, settings, client, factories, fixture_users):
+    m = mocker.patch("docserver.operators.jwt.encode", side_effect=["the_access_token", "the_refresh_token"])
     dt = datetime(2021, 1, 31, 12, 23, 34, 5678)
     query = factories.UserLoginQueryFactory.build(login_id="testuser", password="p@ssW0rd")
     with freezegun.freeze_time(dt):
@@ -56,15 +57,56 @@ def test_get_token(mocker, settings, client, factories, fixture_users):
         assert response.status_code == status.HTTP_200_OK
         res_json = response.json()
         assert res_json["tokenType"] == "bearer"
-        assert res_json["accessToken"] == m.return_value
-        m.assert_called_once_with(
+        assert res_json["accessToken"] == "the_access_token"
+        assert res_json["refreshToken"] == "the_refresh_token"
+        m.assert_has_calls(
+            [
+                call(
+                    {
+                        "sub": "userId:0123456789abcdefABCDEF",
+                        "exp": dt + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+                    },
+                    key=settings.SECRET_KEY,
+                    algorithm=settings.ALGORITHM,
+                )
+            ],
+            [
+                call(
+                    {
+                        "sub": "userId:0123456789abcdefABCDEF",
+                        "exp": dt + timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES),
+                    },
+                    key=settings.SECRET_KEY,
+                    algorithm=settings.ALGORITHM,
+                )
+            ],
+        )
+
+
+def test_get_token_with_stored_refresh_token(mocker, settings, client, factories, fixture_refresh_token):
+    encode = mocker.patch("docserver.operators.jwt.encode", return_value="the_access_token")
+    decode = mocker.patch("docserver.operators.jwt.decode", return_value={"sub": "userId:0123456789abcdefABCDEF"})
+    dt = datetime(2021, 1, 31, 12, 23, 34, 5678)
+    query = factories.UserLoginQueryFactory.build(login_id="testuser", password="p@ssW0rd")
+    with freezegun.freeze_time(dt):
+        response = client.post(
+            "/api/v1/token",
+            data=query,
+        )
+        assert response.status_code == status.HTTP_200_OK
+        res_json = response.json()
+        assert res_json["tokenType"] == "bearer"
+        assert res_json["accessToken"] == "the_access_token"
+        assert res_json["refreshToken"] == "the_refresh_token"
+        encode.assert_called_once_with(
             {
                 "sub": "userId:0123456789abcdefABCDEF",
                 "exp": dt + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
             },
-            settings.SECRET_KEY,
+            key=settings.SECRET_KEY,
             algorithm=settings.ALGORITHM,
         )
+        decode.assert_called_once_with("the_refresh_token", key=settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
 
 
 def test_get_token_fails_when_wrong_password(client, factories, fixture_users):

@@ -31,13 +31,20 @@ def generate_app(settings=None):
                 detail="Incorrect login_id or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = operators.create_access_token(
             data={"sub": f"userId:{user.id}"},
-            expires_delta=access_token_expires,
+            expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
             secret_key=settings.SECRET_KEY,
             algorithm=settings.ALGORITHM,
         )
-        return {"access_token": access_token, "token_type": "bearer"}
+        refresh_token = operators.get_or_create_refresh_token(
+            db,
+            user_id=user.id,
+            expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+            secret_key=settings.SECRET_KEY,
+            algorithm=settings.ALGORITHM,
+        )
+
+        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
     return app
