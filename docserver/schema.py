@@ -5,10 +5,8 @@ from typing import Any, Union
 
 from humps import camelize
 from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr, SecretStr, constr
+from pydantic import EmailStr, SecretStr, constr
 from pydantic.generics import GenericModel
-
-from .utils import suuid_generator
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -38,7 +36,8 @@ class PasswordString(SecretStr):
         v = super().validate(value)
         if (
             re.match(
-                r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[`~!@#$%^&*()-_+={[\]|:;\"'<,>.?/}])[A-Za-z\d`~!@#$%^&*()-_+={[\]|:;\"'<,>.?/}]{8,32}$",
+                r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[`~!@#$%^&*()-_+={[\]|:;\"'<,>.?/}])"
+                r"[A-Za-z\d`~!@#$%^&*()-_+={[\]|:;\"'<,>.?/}]{8,32}$",
                 v.get_secret_value(),
             )
             is None
@@ -67,14 +66,14 @@ class UserLoginQuery(GenericCamelModel):
         try:
             UsernameString.validate(value=self.login_id)
             return True
-        except ValueError as _:
+        except ValueError:
             return False
 
     def is_email(self) -> bool:
         try:
             EmailStr.validate(value=self.login_id)
             return True
-        except ValueError as _:
+        except ValueError:
             return False
 
 
