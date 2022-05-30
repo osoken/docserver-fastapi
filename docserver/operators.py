@@ -55,16 +55,18 @@ def get_or_create_refresh_token(
         try:
             payload = jwt.decode(refresh_token_record.token, key=secret_key, algorithms=[algorithm])
             uid_in_payload = re.sub("^userId:", "", payload.get("sub"))
-            if user_id != uid_in_payload:
-                refresh_token_record = None
+            assert user_id == uid_in_payload
+            return refresh_token_record.token
         except ExpiredSignatureError:
-            refresh_token_record = None
+            pass
+    encoded_jwt = create_access_token(
+        {"sub": f"userId:{user_id}"}, expires_delta=expires_delta, secret_key=secret_key, algorithm=algorithm
+    )
     if refresh_token_record is None:
-        encoded_jwt = create_access_token(
-            {"sub": f"userId:{user_id}"}, expires_delta=expires_delta, secret_key=secret_key, algorithm=algorithm
-        )
         refresh_token_record = models.RefreshToken(user_id=user_id, token=encoded_jwt)
         db.add(refresh_token_record)
-        db.commit()
-        db.refresh(refresh_token_record)
+    else:
+        refresh_token_record.token = encoded_jwt
+    db.commit()
+    db.refresh(refresh_token_record)
     return refresh_token_record.token

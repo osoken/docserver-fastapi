@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from pydantic_factories import ModelFactory
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm.session import close_all_sessions
 
 
 class TestingSession(Session):
@@ -44,7 +45,7 @@ class TestSessionHandler(SessionHandler):
             assert e is not None
             db.rollback()
         finally:
-            db.close()
+            ...
 
 
 class DocServerModelFactory(ModelFactory):
@@ -168,7 +169,7 @@ def db(test_db, settings) -> Generator:
     models.Base.metadata.create_all(test_session_handler.engine)
 
     yield test_session_handler
-
+    close_all_sessions()
     test_session_handler.engine.dispose()
 
 
@@ -214,7 +215,7 @@ def factories(db) -> Generator:
             self.RefreshTokenFactory = RefreshTokenFactory
 
     yield Factories()
-
+    close_all_sessions()
     db.engine.dispose()
 
 
