@@ -175,3 +175,30 @@ def test_get_token_fails_when_wrong_password(client, settings, factories, fixtur
         data=query,
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_recreate_access_token(mocker, client, settings, factories, fixture_refresh_token):
+    encode = mocker.patch("docserver.operators.jwt.encode", return_value="the_access_token")
+    decode = mocker.patch("docserver.operators.jwt.decode", return_value={"sub": "userId:0123456789abcdefABCDEF"})
+    dt = datetime(2021, 1, 31, 12, 23, 34, 5678)
+    query = factories.UserLoginQueryFactory.build(login_id="testuser", password="p@ssW0rd")
+    with freezegun.freeze_time(dt):
+        response = client.post(
+            settings.API_V1_STR + "/token/recreate", data=query, headers={"Authorization": "the_refresh_token"}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        res_json = response.json()
+        assert res_json["accessToken"] == "the_access_token"
+        encode.assert_has_calls(
+            [
+                call(
+                    {
+                        "sub": "userId:0123456789abcdefABCDEF",
+                        "exp": dt + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+                    },
+                    key=settings.SECRET_KEY,
+                    algorithm=settings.ALGORITHM,
+                )
+            ],
+        )
+        decode.assert_called_once_with("the_refresh_token", key=settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
