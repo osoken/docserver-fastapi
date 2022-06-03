@@ -193,6 +193,9 @@ def factories(db) -> Generator:
     class UserLoginQueryFactory(DocServerModelFactory):
         __model__ = schema.UserLoginQuery
 
+    class RefreshTokenQueryFactory(DocServerModelFactory):
+        __model__ = schema.RefreshTokenQuery
+
     class UserFactory(SQLAlchemyModelFactory):
         class Meta:
             model = models.User
@@ -211,6 +214,7 @@ def factories(db) -> Generator:
         def __init__(self):
             self.UserCreateQueryFactory = UserCreateQueryFactory
             self.UserFactory = UserFactory
+            self.RefreshTokenQueryFactory = RefreshTokenQueryFactory
             self.UserLoginQueryFactory = UserLoginQueryFactory
             self.RefreshTokenFactory = RefreshTokenFactory
 

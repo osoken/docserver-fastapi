@@ -77,6 +77,10 @@ class UserLoginQuery(GenericCamelModel):
             return False
 
 
+class RefreshTokenQuery(GenericCamelModel):
+    refresh_token: str
+
+
 class UserRetrieveResponse(GenericCamelModel):
     id: ShortUUID
     username: UsernameString
@@ -91,6 +95,11 @@ class UserRetrieveResponse(GenericCamelModel):
 class TokenResponse(GenericCamelModel):
     access_token: str
     refresh_token: str
+    token_type: str
+
+
+class AccessTokenResponse(GenericCamelModel):
+    access_token: str
     token_type: str
 
 
