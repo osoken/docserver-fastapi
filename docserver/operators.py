@@ -25,7 +25,7 @@ def create_user(db: Session, query: schema.UserCreateQuery) -> schema.UserRetrie
     return schema.UserRetrieveResponse.from_orm(user)
 
 
-def authenticate_user(db: Session, query: schema.UserLoginQuery) -> Union[schema.UserRetrieveResponse, None]:
+def authenticate_user(db: Session, query: schema.UserLoginQuery) -> Union[models.User, None]:
     if query.is_username():
         user = db.query(models.User).filter(models.User.username == query.login_id).first()
     else:
@@ -37,6 +37,22 @@ def authenticate_user(db: Session, query: schema.UserLoginQuery) -> Union[schema
             id=user.id, username=user.username, email=user.email, created_at=user.created_at, updated_at=user.updated_at
         )
     return None
+
+
+def get_user_by_refresh_token(
+    db: Session, refresh_token: str, secret_key: str, algorithm: str
+) -> Union[models.User, None]:
+    refresh_token_record = db.query(models.RefreshToken).filter(models.RefreshToken.token == refresh_token).first()
+    if refresh_token_record is None:
+        return None
+    try:
+        payload = jwt.decode(refresh_token, key=secret_key, algorithms=[algorithm])
+        uid_in_payload = re.sub("^userId:", "", payload.get("sub"))
+        if refresh_token_record.user_id != uid_in_payload:
+            return None
+    except ExpiredSignatureError:
+        return None
+    return db.query(models.User).get(refresh_token_record.user_id)
 
 
 def create_access_token(data: Mapping[str, str], expires_delta: timedelta, secret_key: str, algorithm: str) -> str:
