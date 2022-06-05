@@ -55,6 +55,17 @@ def get_user_by_refresh_token(
     return db.query(models.User).get(refresh_token_record.user_id)
 
 
+def get_user_by_access_token(
+    db: Session, access_token: str, secret_key: str, algorithm: str
+) -> Union[models.User, None]:
+    try:
+        payload = jwt.decode(access_token, key=secret_key, algorithms=[algorithm])
+        uid_in_payload = re.sub("^userId:", "", payload.get("sub"))
+    except ExpiredSignatureError:
+        return None
+    return db.query(models.User).get(uid_in_payload)
+
+
 def create_access_token(data: Mapping[str, str], expires_delta: timedelta, secret_key: str, algorithm: str) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + expires_delta

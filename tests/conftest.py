@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Callable, Dict, Generator, Optional
 from uuid import uuid4
 
@@ -230,6 +231,8 @@ def fixture_users(factories) -> Generator:
         username="testuser",
         email="test@somewhere.com",
         hashed_password=schema._get_hashed_value("p@ssW0rd"),
+        created_at=datetime(2022, 6, 5, 14, 51, 35),
+        updated_at=datetime(2022, 6, 9, 12, 11, 15),
     )
     yield None
     factories.UserFactory._meta.sqlalchemy_session.close()
