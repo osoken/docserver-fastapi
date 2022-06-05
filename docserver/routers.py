@@ -119,4 +119,12 @@ def generate_router(
             updated_at=current_user.updated_at,
         )
 
+    @router.post("/collections", response_model=schema.CollectionDetailResponse)
+    def create_collection(
+        data: schema.CollectionCreateQuery,
+        db: Session = Depends(session_handler.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        return operators.create_collection(db, data, current_user)
+
     return router

@@ -58,6 +58,10 @@ class UserCreateQuery(GenericCamelModel):
     password: PasswordString
 
 
+class CollectionCreateQuery(GenericCamelModel):
+    name: str
+
+
 class UserLoginQuery(GenericCamelModel):
     login_id: Union[UsernameString, EmailStr]
     password: PasswordString
@@ -107,6 +111,17 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str
     refresh_token: str
+
+
+class CollectionDetailResponse(GenericCamelModel):
+    id: ShortUUID
+    name: str
+    owner_id: ShortUUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
 
 
 class DocServerJSONEncoder(JSONEncoder):

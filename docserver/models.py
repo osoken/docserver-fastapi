@@ -36,3 +36,15 @@ class RefreshToken(Base):
     updated_at = Column(DateTime, nullable=False, default=gen_timestamp, onupdate=gen_timestamp)
 
     user = relationship("User", backref=backref("token", uselist=False))
+
+
+class Collection(Base):
+    __tablename__ = "collections"
+
+    id = id_column_type()
+    owner_id = Column(id_type, ForeignKey(User.id))
+    name = Column(String, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=gen_timestamp)
+    updated_at = Column(DateTime, nullable=False, default=gen_timestamp, onupdate=gen_timestamp)
+
+    user = relationship("User", backref=backref("collections"))

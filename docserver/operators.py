@@ -97,3 +97,11 @@ def get_or_create_refresh_token(
     db.commit()
     db.refresh(refresh_token_record)
     return refresh_token_record.token
+
+
+def create_collection(db: Session, data: schema.CollectionCreateQuery, user: models.User) -> models.Collection:
+    collection = models.Collection(name=data.name, owner_id=user.id)
+    db.add(collection)
+    db.commit()
+    db.refresh(collection)
+    return collection

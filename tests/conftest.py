@@ -197,6 +197,9 @@ def factories(db) -> Generator:
     class RefreshTokenQueryFactory(DocServerModelFactory):
         __model__ = schema.RefreshTokenQuery
 
+    class CollectionCreateQueryFactory(DocServerModelFactory):
+        __model__ = schema.CollectionCreateQuery
+
     class UserFactory(SQLAlchemyModelFactory):
         class Meta:
             model = models.User
@@ -216,6 +219,7 @@ def factories(db) -> Generator:
             self.UserCreateQueryFactory = UserCreateQueryFactory
             self.UserFactory = UserFactory
             self.RefreshTokenQueryFactory = RefreshTokenQueryFactory
+            self.CollectionCreateQueryFactory = CollectionCreateQueryFactory
             self.UserLoginQueryFactory = UserLoginQueryFactory
             self.RefreshTokenFactory = RefreshTokenFactory
 
@@ -226,7 +230,7 @@ def factories(db) -> Generator:
 
 @pytest.fixture(scope="function")
 def fixture_users(factories) -> Generator:
-    factories.UserFactory(
+    testuser = factories.UserFactory(
         id="0123456789abcdefABCDEF",
         username="testuser",
         email="test@somewhere.com",
@@ -234,7 +238,7 @@ def fixture_users(factories) -> Generator:
         created_at=datetime(2022, 6, 5, 14, 51, 35),
         updated_at=datetime(2022, 6, 9, 12, 11, 15),
     )
-    yield None
+    yield {"testuser": testuser}
     factories.UserFactory._meta.sqlalchemy_session.close()
 
 
