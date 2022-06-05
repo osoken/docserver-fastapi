@@ -2,7 +2,7 @@ from datetime import timedelta
 from typing import Union
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, SecurityScopes
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import jwt
 from jose.exceptions import JWTError
 from pydantic import ValidationError
@@ -11,10 +11,10 @@ from sqlalchemy.orm import Session
 from . import config, deps, models, operators, schema
 
 
-def generate_router(settings: config.Settings, session_handler: deps.SessionHandler):
+def generate_router(
+    settings: config.Settings, session_handler: deps.SessionHandler, oauth2_scheme: OAuth2PasswordBearer
+):
     router = APIRouter()
-
-    oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
     async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(session_handler.get_db)):
         user = operators.get_user_by_access_token(db, token, settings.SECRET_KEY, settings.ALGORITHM)
@@ -35,7 +35,8 @@ def generate_router(settings: config.Settings, session_handler: deps.SessionHand
 
     @router.post("/token", response_model=schema.TokenResponse)
     def get_token(
-        data: Union[schema.UserLoginQuery, schema.RefreshTokenQuery], db: Session = Depends(session_handler.get_db)
+        data: Union[schema.UserLoginQuery, schema.RefreshTokenQuery],
+        db: Session = Depends(session_handler.get_db),
     ):
         if isinstance(data, schema.UserLoginQuery):
             user = operators.authenticate_user(db, data)
@@ -64,6 +65,34 @@ def generate_router(settings: config.Settings, session_handler: deps.SessionHand
                 )
             refresh_token = data.refresh_token
 
+        access_token = operators.create_access_token(
+            data={"sub": f"userId:{user.id}"},
+            expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+            secret_key=settings.SECRET_KEY,
+            algorithm=settings.ALGORITHM,
+        )
+        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+
+    @router.post("/login", response_model=schema.LoginResponse)
+    def login_by_password(
+        db: Session = Depends(session_handler.get_db), form_data: OAuth2PasswordRequestForm = Depends()
+    ):
+        user = operators.authenticate_user(
+            db, schema.UserLoginQuery(login_id=form_data.username, password=form_data.password)
+        )
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect login_id or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        refresh_token = operators.get_or_create_refresh_token(
+            db,
+            user_id=user.id,
+            expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+            secret_key=settings.SECRET_KEY,
+            algorithm=settings.ALGORITHM,
+        )
         access_token = operators.create_access_token(
             data={"sub": f"userId:{user.id}"},
             expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),

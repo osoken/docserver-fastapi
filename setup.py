@@ -31,6 +31,7 @@ setup(
         "httptools",
         "python-jose[cryptography]",
         "passlib[bcrypt]",
+        "python-multipart",
     ],
     extras_require={
         "dev": [

@@ -5,7 +5,7 @@ from typing import Any, Union
 
 from humps import camelize
 from passlib.context import CryptContext
-from pydantic import EmailStr, SecretStr, constr
+from pydantic import BaseModel, EmailStr, SecretStr, constr
 from pydantic.generics import GenericModel
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -101,6 +101,12 @@ class TokenResponse(GenericCamelModel):
 class AccessTokenResponse(GenericCamelModel):
     access_token: str
     token_type: str
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str
+    refresh_token: str
 
 
 class DocServerJSONEncoder(JSONEncoder):
