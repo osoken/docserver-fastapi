@@ -105,3 +105,7 @@ def create_collection(db: Session, data: schema.CollectionCreateQuery, user: mod
     db.commit()
     db.refresh(collection)
     return collection
+
+
+def list_collections(db: Session, user: models.User):
+    raise NotImplementedError

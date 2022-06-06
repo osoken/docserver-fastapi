@@ -127,4 +127,11 @@ def generate_router(
     ):
         return operators.create_collection(db, data, current_user)
 
+    @router.get("/collections")
+    def list_collections(
+        db: Session = Depends(session_handler.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        return operators.list_collection(db, current_user)
+
     return router

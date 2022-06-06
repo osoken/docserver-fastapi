@@ -7,7 +7,7 @@ from docserver import config, models, schema, utils
 from docserver.app import generate_app
 from docserver.deps import SessionHandler
 from factory.alchemy import SQLAlchemyModelFactory
-from factory.fuzzy import FuzzyAttribute
+from factory.fuzzy import FuzzyAttribute, FuzzyText
 from fastapi import testclient
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
@@ -214,6 +214,14 @@ def factories(db) -> Generator:
             sqlalchemy_session = db.sessionmaker
             sqlalchemy_session_persistence = "commit"
 
+    class CollectionFactory(SQLAlchemyModelFactory):
+        class Meta:
+            model = models.Collection
+            sqlalchemy_session = db.sessionmaker
+            sqlalchemy_session_persistence = "commit"
+
+        name = FuzzyText()
+
     class Factories:
         def __init__(self):
             self.UserCreateQueryFactory = UserCreateQueryFactory
@@ -222,6 +230,7 @@ def factories(db) -> Generator:
             self.CollectionCreateQueryFactory = CollectionCreateQueryFactory
             self.UserLoginQueryFactory = UserLoginQueryFactory
             self.RefreshTokenFactory = RefreshTokenFactory
+            self.CollectionFactory = CollectionFactory
 
     yield Factories()
     close_all_sessions()
@@ -249,3 +258,9 @@ def fixture_refresh_token(factories, fixture_users) -> Generator:
     )
     yield None
     factories.UserFactory._meta.sqlalchemy_session.close()
+
+
+@pytest.fixture(scope="function")
+def fixture_collections(factories, fixture_users) -> Generator:
+    testuser_collections = [factories.CollectionFactory(owner_id=fixture_users["testuser"].id) for _ in range(100)]
+    yield {"testuser_collections": testuser_collections}

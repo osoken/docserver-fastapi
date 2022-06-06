@@ -34,3 +34,8 @@ def test_create_collections(mocker, client, factories, settings, fixture_users):
             "id": "2123456789abcdefABCDEF",
         }
         decode.assert_called_once_with("the_access_token", key=settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+
+def test_list_collection_fails_if_no_valid_token_provided(client, settings, fixture_collections):
+    response = client.get(f"{settings.API_V1_STR}/collections")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
