@@ -39,3 +39,29 @@ def test_create_collections(mocker, client, factories, settings, fixture_users):
 def test_list_collection_fails_if_no_valid_token_provided(client, settings, fixture_collections):
     response = client.get(f"{settings.API_V1_STR}/collections")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_list_collection_returns_empty_list_for_new_user(mocker, client, settings, fixture_users, fixture_collections):
+    decode = mocker.patch(
+        "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
+    )
+    response = client.get(f"{settings.API_V1_STR}/collections", headers={"Authorization": "Bearer the_access_token"})
+    assert response.status_code == status.HTTP_200_OK
+    decode.assert_called_once_with("the_access_token", key=settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    assert response.json() == {
+        "meta": {
+            "count": 123,
+            "nextCursor": fixture_collections["testuser_collections"][-11].cursor_value,
+            "prevCursor": None,
+        },
+        "results": [
+            {
+                "id": d.id,
+                "name": d.name,
+                "updatedAt": d.updated_at.isoformat(),
+                "createdAt": d.created_at.isoformat(),
+                "ownerId": d.owner_id,
+            }
+            for d in fixture_collections["testuser_collections"][-1:-11:-1]
+        ],
+    }

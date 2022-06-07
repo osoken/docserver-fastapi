@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Generator, Optional
 from uuid import uuid4
 
+import freezegun
 import pytest
 from docserver import config, models, schema, utils
 from docserver.app import generate_app
@@ -262,5 +263,10 @@ def fixture_refresh_token(factories, fixture_users) -> Generator:
 
 @pytest.fixture(scope="function")
 def fixture_collections(factories, fixture_users) -> Generator:
-    testuser_collections = [factories.CollectionFactory(owner_id=fixture_users["testuser"].id) for _ in range(100)]
+    dt = datetime(2022, 6, 7, 12, 34, 56, 789012)
+    testuser_collections = []
+    with freezegun.freeze_time(dt) as fdt:
+        for _ in range(123):
+            testuser_collections.append(factories.CollectionFactory(owner_id=fixture_users["testuser"].id))
+            fdt.tick(delta=timedelta(minutes=1))
     yield {"testuser_collections": testuser_collections}

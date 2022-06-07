@@ -11,6 +11,11 @@ def id_column_type():
     return Column(id_type, primary_key=True, default=gen_uuid)
 
 
+def format_cursor_value(context):
+    params = context.get_current_parameters()
+    return f"{params['updated_at'].timestamp()}|{params.get('id', params.get('collections_id'))}"
+
+
 Base = declarative_base()
 
 
@@ -46,5 +51,8 @@ class Collection(Base):
     name = Column(String, nullable=False)
     created_at = Column(DateTime, nullable=False, default=gen_timestamp)
     updated_at = Column(DateTime, nullable=False, default=gen_timestamp, onupdate=gen_timestamp)
+    cursor_value = Column(
+        String, default=format_cursor_value, onupdate=format_cursor_value, index=True, unique=True, nullable=False
+    )
 
     user = relationship("User", backref=backref("collections"))

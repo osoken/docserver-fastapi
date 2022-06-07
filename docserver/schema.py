@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 from json import JSONEncoder
-from typing import Any, Union
+from typing import Any, List, Optional, Union
 
 from humps import camelize
 from passlib.context import CryptContext
@@ -122,6 +122,17 @@ class CollectionDetailResponse(GenericCamelModel):
 
     class Config:
         orm_mode = True
+
+
+class CollectionListMeta(GenericCamelModel):
+    count: int
+    next_cursor: Optional[str]
+    prev_cursor: Optional[str]
+
+
+class CollectionListResponse(GenericCamelModel):
+    meta: CollectionListMeta
+    results: List[CollectionDetailResponse]
 
 
 class DocServerJSONEncoder(JSONEncoder):

@@ -107,5 +107,20 @@ def create_collection(db: Session, data: schema.CollectionCreateQuery, user: mod
     return collection
 
 
-def list_collections(db: Session, user: models.User):
-    raise NotImplementedError
+def list_collections(db: Session, user: models.User, cursor: str = None, page_size: int = 10):
+    q = db.query(models.Collection).filter(models.Collection.owner_id == user.id)
+    res = list(q.order_by(models.Collection.cursor_value.desc()).limit(page_size))
+    b0 = (
+        q.filter(models.Collection.cursor_value < res[-1].cursor_value)
+        .order_by(models.Collection.cursor_value.desc())
+        .first()
+    )
+    b1 = q.filter(models.Collection.cursor_value > res[0].cursor_value).order_by(models.Collection.cursor_value).first()
+    return {
+        "meta": {
+            "count": q.count(),
+            "next_cursor": b0.cursor_value if b0 is not None else None,
+            "prev_cursor": b1.cursor_value if b1 is not None else None,
+        },
+        "results": list(res),
+    }
