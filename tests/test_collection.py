@@ -41,7 +41,7 @@ def test_list_collection_fails_if_no_valid_token_provided(client, settings, fixt
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-def test_list_collection_returns_empty_list_for_new_user(mocker, client, settings, fixture_users, fixture_collections):
+def test_list_collection_returns_first_ten_collections(mocker, client, settings, fixture_users, fixture_collections):
     decode = mocker.patch(
         "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
     )
