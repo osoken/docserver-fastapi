@@ -65,3 +65,20 @@ def test_list_collection_returns_first_ten_collections(mocker, client, settings,
             for d in fixture_collections["testuser_collections"][-1:-11:-1]
         ],
     }
+
+
+def test_list_collection_returns_empty_if_user_has_no_collection(mocker, client, settings, fixture_users):
+    decode = mocker.patch(
+        "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
+    )
+    response = client.get(f"{settings.API_V1_STR}/collections", headers={"Authorization": "Bearer the_access_token"})
+    assert response.status_code == status.HTTP_200_OK
+    decode.assert_called_once_with("the_access_token", key=settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    assert response.json() == {
+        "meta": {
+            "count": 0,
+            "nextCursor": None,
+            "prevCursor": None,
+        },
+        "results": [],
+    }
