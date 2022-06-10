@@ -19,7 +19,7 @@ def gen_uuid() -> str:
     return suuid_generator.uuid()
 
 
-def gen_timestamp() -> datetime:
+def gen_datetime() -> datetime:
     return datetime.utcnow()
 
 
