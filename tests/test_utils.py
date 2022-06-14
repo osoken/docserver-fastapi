@@ -16,3 +16,11 @@ def test_gen_datetime(mocker):
     m = mocker.patch("docserver.utils.datetime")
     actual = utils.gen_datetime()
     assert actual == m.utcnow.return_value
+
+
+def test_format_timestamp():
+    ts = 1655213261.556825
+    dt = datetime.fromtimestamp(ts)
+    actual = utils.format_timestamp(dt)
+    expected = "1655213261556"
+    assert actual == expected

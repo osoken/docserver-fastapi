@@ -23,6 +23,10 @@ def gen_datetime() -> datetime:
     return datetime.utcnow()
 
 
+def format_timestamp(dt: datetime) -> str:
+    return f"{int(dt.timestamp() * 1000)}"
+
+
 symbols = "`~!@#$%^&*()-_+={[]|:;\"'<,>.?/}"
 all_chars = ascii_lowercase + ascii_uppercase + digits + symbols
 
