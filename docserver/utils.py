@@ -27,6 +27,10 @@ def format_timestamp(dt: datetime) -> str:
     return f"{int(dt.timestamp() * 1000)}"
 
 
+def format_cursor_value(dt: datetime, id_str: str) -> str:
+    return f"{format_timestamp(dt)}|{id_str}"
+
+
 symbols = "`~!@#$%^&*()-_+={[]|:;\"'<,>.?/}"
 all_chars = ascii_lowercase + ascii_uppercase + digits + symbols
 
