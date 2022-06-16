@@ -38,6 +38,16 @@ def test_format_cursor_value():
 
 def test_gen_password_raises_value_error_when_given_length_is_too_short_or_too_long():
     with pytest.raises(ValueError):
-        actual = utils.gen_password(7)
+        _ = utils.gen_password(7)
     with pytest.raises(ValueError):
-        actual = utils.gen_password(33)
+        _ = utils.gen_password(33)
+
+
+def test_gen_password():
+    for i in range(8, 33):
+        actual = utils.gen_password(i)
+        assert len(actual) == i
+        assert re.match(".*[0-9].*", actual) is not None
+        assert re.match(".*[a-z].*", actual) is not None
+        assert re.match(".*[A-Z].*", actual) is not None
+        assert re.match(f".*[{utils.symbols}].*", actual) is not None
