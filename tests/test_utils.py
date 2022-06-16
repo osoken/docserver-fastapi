@@ -1,4 +1,5 @@
 import re
+import pytest
 from datetime import datetime, timedelta
 import freezegun
 from docserver import utils
@@ -33,3 +34,10 @@ def test_format_cursor_value():
     actual = utils.format_cursor_value(dt, id_)
     expected = "1655213261556|0123456789abcdefABCDEF"
     assert actual == expected
+
+
+def test_gen_password_raises_value_error_when_given_length_is_too_short_or_too_long():
+    with pytest.raises(ValueError):
+        actual = utils.gen_password(7)
+    with pytest.raises(ValueError):
+        actual = utils.gen_password(33)
