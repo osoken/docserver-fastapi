@@ -24,7 +24,7 @@ def gen_datetime() -> datetime:
 
 
 def format_timestamp(dt: datetime) -> str:
-    return f"{int(dt.timestamp() * 1000)}"
+    return f"{int(dt.timestamp() * 1000000)}"
 
 
 def format_cursor_value(dt: datetime, id_str: str) -> str:
