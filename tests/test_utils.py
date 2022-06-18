@@ -52,3 +52,39 @@ def test_gen_password():
         assert re.match(".*[a-z].*", actual) is not None
         assert re.match(".*[A-Z].*", actual) is not None
         assert re.match(f".*[{utils.symbols}].*", actual) is not None
+
+
+def test_format_next_cursor():
+    cursor_value = "1655213261556825|0123456789abcdefABCDEF"
+    actual = utils.format_next_cursor(cursor_value)
+    assert actual == "n|1655213261556825|0123456789abcdefABCDEF"
+
+
+def test_format_prev_cursor():
+    cursor_value = "1655213261556825|0123456789abcdefABCDEF"
+    actual = utils.format_prev_cursor(cursor_value)
+    assert actual == "p|1655213261556825|0123456789abcdefABCDEF"
+
+
+def test_encode_cursor_next_cursor():
+    cursor = "n|1655213261556825|0123456789abcdefABCDEF"
+    actual = utils.encode_cursor(cursor)
+    assert actual == "bnwxNjU1MjEzMjYxNTU2ODI1fDAxMjM0NTY3ODlhYmNkZWZBQkNERUY="
+
+
+def test_encode_cursor_prev_cursor():
+    cursor = "p|1655213261556825|0123456789abcdefABCDEF"
+    actual = utils.encode_cursor(cursor)
+    assert actual == "cHwxNjU1MjEzMjYxNTU2ODI1fDAxMjM0NTY3ODlhYmNkZWZBQkNERUY="
+
+
+def test_decode_cursor():
+    encoded_cursor = "cHwxNjU1MjEzMjYxNTU2ODI1fDAxMjM0NTY3ODlhYmNkZWZBQkNERUY="
+    actual = utils.decode_cursor(encoded_cursor)
+    assert actual == "p|1655213261556825|0123456789abcdefABCDEF"
+
+
+def test_parse_cursor():
+    decoded_cursor = "p|1655213261556825|0123456789abcdefABCDEF"
+    actual = utils.parse_cursor(decoded_cursor)
+    assert actual == ("p", "1655213261556825|0123456789abcdefABCDEF")

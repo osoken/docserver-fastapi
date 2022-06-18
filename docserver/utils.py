@@ -1,4 +1,5 @@
 import hashlib
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 from datetime import datetime
 from random import choices, shuffle
 from string import ascii_lowercase, ascii_uppercase, digits
@@ -29,6 +30,26 @@ def format_timestamp(dt: datetime) -> str:
 
 def format_cursor_value(dt: datetime, id_str: str) -> str:
     return f"{format_timestamp(dt)}|{id_str}"
+
+
+def format_next_cursor(cursor_value: str) -> str:
+    return f"n|{cursor_value}"
+
+
+def format_prev_cursor(cursor_value: str) -> str:
+    return f"p|{cursor_value}"
+
+
+def encode_cursor(cursor: str) -> str:
+    return urlsafe_b64encode(cursor.encode("utf-8")).decode("utf-8")
+
+
+def decode_cursor(encoded_cursor: str) -> str:
+    return urlsafe_b64decode(encoded_cursor.encode("utf-8")).decode("utf-8")
+
+
+def parse_cursor(decoded_cursor: str) -> str:
+    return tuple(decoded_cursor.split("|", 1))
 
 
 symbols = "`~!@#$%^&*()-_+={[]|:;\"'<,>.?/}"
