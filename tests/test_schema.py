@@ -1,5 +1,3 @@
-from multiprocessing.sharedctypes import Value
-
 import pytest
 from docserver import schema
 
@@ -74,3 +72,26 @@ def test_user_login_query_login_id_validation(login_id: str, expected_as: str):
             assert False
     except ValueError as _:
         assert expected_as == "invalid"
+
+
+class DecodedCurosrTester(schema.GenericCamelModel):
+    cursor: schema.DecodedCursor
+
+
+@pytest.mark.parametrize(
+    ["args", "expected"],
+    [
+        ["p|1655213261556825|0123456789abcdefABCDEF", "prev"],
+        ["n|1655213261556825|0123456789abcdefABCDEF", "next"],
+        ["x|1655213261556825|0123456789abcdefABCDEF", "invalid"],
+    ],
+)
+def test_decoded_cursor(args: str, expected: str):
+    try:
+        actual = DecodedCurosrTester(cursor=args)
+        if actual.cursor.is_prev():
+            assert "prev" == expected
+        else:
+            assert "next" == expected
+    except ValueError as _:
+        assert expected == "invalid"
