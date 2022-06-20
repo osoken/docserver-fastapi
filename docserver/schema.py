@@ -84,6 +84,11 @@ class DecodedCursor(str):
         return self.direction == "n"
 
 
+class EncodedCursor(DecodedCursor):
+    def __init__(self, v: str):
+        super(EncodedCursor, self).__init__(utils.decode_cursor(v))
+
+
 class UserCreateQuery(GenericCamelModel):
     username: UsernameString
     email: EmailStr

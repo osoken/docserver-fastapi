@@ -95,3 +95,26 @@ def test_decoded_cursor(args: str, expected: str):
             assert "next" == expected
     except ValueError as _:
         assert expected == "invalid"
+
+
+class EncodedCursorTester(schema.GenericCamelModel):
+    cursor: schema.EncodedCursor
+
+
+@pytest.mark.parametrize(
+    ["args", "expected"],
+    [
+        ["cHwxNjU1MjEzMjYxNTU2ODI1fDAxMjM0NTY3ODlhYmNkZWZBQkNERUY=", "prev"],
+        ["bnwxNjU1MjEzMjYxNTU2ODI1fDAxMjM0NTY3ODlhYmNkZWZBQkNERUY=", "next"],
+        ["eHwxNjU1MjEzMjYxNTU2ODI1fDAxMjM0NTY3ODlhYmNkZWZBQkNERUY=", "invalid"],
+    ],
+)
+def test_encoded_cursor(args: str, expected: str):
+    try:
+        actual = EncodedCursorTester(cursor=args)
+        if actual.cursor.is_prev():
+            assert "prev" == expected
+        else:
+            assert "next" == expected
+    except ValueError as _:
+        assert expected == "invalid"
