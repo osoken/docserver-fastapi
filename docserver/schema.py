@@ -10,6 +10,8 @@ from pydantic.generics import GenericModel
 
 from docserver import utils
 
+from .types import EncodedCursor
+
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -52,41 +54,6 @@ class PasswordString(SecretStr):
 
     def verify_with_hashed_value(self, hashed_password: str) -> bool:
         return _verify_password(self.get_secret_value(), hashed_password)
-
-
-class DecodedCursor(str):
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    def __init__(self, v: str):
-        self._direction, self._cursor_value = utils.parse_cursor(v)
-
-    @property
-    def direction(self) -> str:
-        return self._direction
-
-    @property
-    def cursor_value(self) -> str:
-        return self._cursor_value
-
-    @classmethod
-    def validate(cls, value: Any) -> 'DecodedCursor':
-        v = cls(value)
-        if v.direction != "p" and v.direction != "n":
-            raise ValueError("invalid direction character")
-        return v
-
-    def is_prev(self) -> bool:
-        return self.direction == "p"
-
-    def is_next(self) -> bool:
-        return self.direction == "n"
-
-
-class EncodedCursor(DecodedCursor):
-    def __init__(self, v: str):
-        super(EncodedCursor, self).__init__(utils.decode_cursor(v))
 
 
 class UserCreateQuery(GenericCamelModel):
@@ -163,8 +130,8 @@ class CollectionDetailResponse(GenericCamelModel):
 
 class CollectionListMeta(GenericCamelModel):
     count: int
-    next_cursor: Optional[str]
-    prev_cursor: Optional[str]
+    next_cursor: Optional[EncodedCursor]
+    prev_cursor: Optional[EncodedCursor]
 
 
 class CollectionListResponse(GenericCamelModel):
@@ -176,6 +143,8 @@ class DocServerJSONEncoder(JSONEncoder):
     def default(self, o):
         if isinstance(o, SecretStr):
             return o.get_secret_value()
+        if isinstance(o, Cursor):
+            return str(o)
 
         return super(DocServerJSONEncoder, self).default(o)
 

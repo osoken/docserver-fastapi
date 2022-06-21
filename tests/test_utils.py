@@ -66,6 +66,13 @@ def test_format_prev_cursor():
     assert actual == "p|1655213261556825|0123456789abcdefABCDEF"
 
 
+def test_format_cursor():
+    cursor_value = "1655213261556825|0123456789abcdefABCDEF"
+    direction = "p"
+    actual = utils.format_cursor(direction, cursor_value)
+    assert actual == "p|1655213261556825|0123456789abcdefABCDEF"
+
+
 def test_encode_cursor_next_cursor():
     cursor = "n|1655213261556825|0123456789abcdefABCDEF"
     actual = utils.encode_cursor(cursor)

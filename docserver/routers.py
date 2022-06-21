@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Union
+from typing import Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -8,7 +8,7 @@ from jose.exceptions import JWTError
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from . import config, deps, models, operators, schema
+from . import config, deps, models, operators, schema, types
 
 
 def generate_router(
@@ -132,6 +132,6 @@ def generate_router(
         db: Session = Depends(session_handler.get_db),
         current_user: models.User = Depends(get_current_user),
     ):
-        return operators.list_collections(db, current_user)
+        return operators.list_collections(db, current_user, None)
 
     return router

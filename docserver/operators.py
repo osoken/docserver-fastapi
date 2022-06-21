@@ -1,14 +1,14 @@
 import re
 from collections.abc import Mapping
 from datetime import datetime, timedelta
-from typing import Union
+from typing import Optional, Union
 
 from jose import jwt
 from jose.exceptions import ExpiredSignatureError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import or_
 
-from . import models, schema
+from . import models, schema, types
 
 
 def create_user(db: Session, query: schema.UserCreateQuery) -> schema.UserRetrieveResponse:
@@ -107,8 +107,16 @@ def create_collection(db: Session, data: schema.CollectionCreateQuery, user: mod
     return collection
 
 
-def list_collections(db: Session, user: models.User, cursor: str = None, page_size: int = 10):
+def list_collections(db: Session, user: models.User, cursor: Optional[types.EncodedCursor] = None, page_size: int = 10):
     q = db.query(models.Collection).filter(models.Collection.owner_id == user.id)
+    if cursor is not None:
+        decoded_cursor = cursor.decode_cursor()
+        if decoded_cursor.direction == "n":
+            q = q.filter(models.Collection.cursor_value <= decoded_cursor.cursor_value)
+        elif decoded_cursor.direction == "p":
+            q = q.filter(models.Collection.cursor_value >= decoded_cursor.cursor_value)
+        else:
+            raise ValueError("invalid direction")
     res = list(q.order_by(models.Collection.cursor_value.desc()).limit(page_size))
     if len(res) == 0:
         b0 = None
@@ -124,11 +132,12 @@ def list_collections(db: Session, user: models.User, cursor: str = None, page_si
             .order_by(models.Collection.cursor_value)
             .first()
         )
-    return {
+    res = {
         "meta": {
             "count": q.count(),
-            "next_cursor": b0.cursor_value if b0 is not None else None,
-            "prev_cursor": b1.cursor_value if b1 is not None else None,
+            "next_cursor": types.DecodedCursor("n", b0.cursor_value) if b0 is not None else None,
+            "prev_cursor": types.DecodedCursor("p", b1.cursor_value) if b1 is not None else None,
         },
         "results": list(res),
     }
+    return res

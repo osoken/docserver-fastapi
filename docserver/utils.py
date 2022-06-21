@@ -32,12 +32,16 @@ def format_cursor_value(dt: datetime, id_str: str) -> str:
     return f"{format_timestamp(dt)}|{id_str}"
 
 
+def format_cursor(direction: str, cursor_value: str) -> str:
+    return f"{direction}|{cursor_value}"
+
+
 def format_next_cursor(cursor_value: str) -> str:
-    return f"n|{cursor_value}"
+    return format_cursor("n", cursor_value)
 
 
 def format_prev_cursor(cursor_value: str) -> str:
-    return f"p|{cursor_value}"
+    return format_cursor("p", cursor_value)
 
 
 def encode_cursor(cursor: str) -> str:
