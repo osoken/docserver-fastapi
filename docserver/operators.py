@@ -174,3 +174,13 @@ def update_collection(
     db.commit()
     db.refresh(collection)
     return collection
+
+
+def delete_collection(db: Session, user: models.User, collection_id: schema.ShortUUID):
+    collection = retrieve_collection(db, user, collection_id)
+    if collection is None:
+        return None
+    res = collection.id
+    db.delete(collection)
+    db.commit()
+    return res

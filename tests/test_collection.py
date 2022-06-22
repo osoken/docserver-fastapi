@@ -289,8 +289,6 @@ def test_retrieve_collection_returns_404_if_no_such_collection(
 def test_retrieve_collection_returns_404_if_other_users_collection(
     mocker, client, settings, fixture_users, fixture_collections
 ):
-    from docserver import utils
-
     decode = mocker.patch(
         "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
     )
@@ -357,14 +355,68 @@ def test_update_collection_returns_404_if_other_users_collection(
     mocker, client, settings, factories, fixture_users, fixture_collections
 ):
     query = factories.CollectionUpdateQueryFactory.build()
-    from docserver import utils
-
     decode = mocker.patch(
         "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
     )
     response = client.put(
         f"{settings.API_V1_STR}/collections/{fixture_collections['testuser2_collections'][1].id}",
         data=query,
+        headers={"Authorization": "Bearer the_access_token"},
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_delete_collection_fails_if_no_valid_token_provided(client, settings, fixture_collections):
+    response = client.delete(
+        f"{settings.API_V1_STR}/collections/{fixture_collections['testuser_collections'][0].id}",
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_delete_collection(mocker, db, client, settings, fixture_users, fixture_collections):
+    from docserver import models
+
+    target_id = fixture_collections['testuser_collections'][12].id
+    decode = mocker.patch(
+        "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
+    )
+    response = client.delete(
+        f"{settings.API_V1_STR}/collections/{target_id}",
+        headers={"Authorization": "Bearer the_access_token"},
+    )
+    assert response.status_code == status.HTTP_200_OK
+    sess = db.sessionmaker()
+    x = sess.query(models.Collection).get(target_id)
+    assert x is None
+    sess.close()
+
+
+def test_delete_collection_returns_404_if_no_such_collection(
+    mocker, client, settings, fixture_users, fixture_collections
+):
+    from docserver import utils
+
+    decode = mocker.patch(
+        "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
+    )
+    cid = utils.gen_uuid()
+    while cid in set(d.id for d in fixture_collections["testuser_collections"]):
+        cid = utils.gen_uuid()
+    response = client.delete(
+        f"{settings.API_V1_STR}/collections/{cid}",
+        headers={"Authorization": "Bearer the_access_token"},
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_delete_collection_returns_404_if_other_users_collection(
+    mocker, client, settings, fixture_users, fixture_collections
+):
+    decode = mocker.patch(
+        "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
+    )
+    response = client.delete(
+        f"{settings.API_V1_STR}/collections/{fixture_collections['testuser2_collections'][1].id}",
         headers={"Authorization": "Bearer the_access_token"},
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND

@@ -128,7 +128,7 @@ def generate_router(
         return operators.create_collection(db, data, current_user)
 
     @router.put("/collections/{collection_id}", response_model=schema.CollectionRetrieveResponse)
-    def create_collection(
+    def update_collection(
         collection_id: schema.ShortUUID,
         data: schema.CollectionUpdateQuery,
         db: Session = Depends(session_handler.get_db),
@@ -138,6 +138,16 @@ def generate_router(
         if res is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such collection")
         return schema.CollectionRetrieveResponse.from_orm(res)
+
+    @router.delete("/collections/{collection_id}")
+    def delete_collection(
+        collection_id: schema.ShortUUID,
+        db: Session = Depends(session_handler.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        res = operators.delete_collection(db, current_user, collection_id)
+        if res is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such collection")
 
     @router.get("/collections", response_model=schema.CollectionListResponse)
     def list_collections(
