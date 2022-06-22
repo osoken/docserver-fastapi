@@ -137,7 +137,7 @@ def test_list_collection_returns_next_ten_collections_with_next_cursor(
     }
 
 
-def test_list_collection_returns_next_ten_collections_with_prev_cursor(
+def test_list_collection_returns_previous_ten_collections_with_prev_cursor(
     mocker, client, settings, fixture_users, fixture_collections
 ):
     decode = mocker.patch(
@@ -181,3 +181,62 @@ def test_list_collection_returns_next_ten_collections_with_prev_cursor(
             for d in fixture_collections["testuser_collections"][-22:-32:-1]
         ],
     }
+
+
+def test_list_collection_iterate_all(mocker, client, settings, fixture_users, fixture_collections):
+    decode = mocker.patch(
+        "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
+    )
+    first_response = client.get(
+        f"{settings.API_V1_STR}/collections",
+        headers={"Authorization": "Bearer the_access_token"},
+    )
+    first_response_json = first_response.json()
+    results = first_response_json["results"]
+    next_cursor = first_response_json["meta"]["nextCursor"]
+    assert first_response_json["meta"]["prevCursor"] is None
+    assert first_response.status_code == status.HTTP_200_OK
+    decode.assert_called_once_with("the_access_token", key=settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    last_prev_cursor = None
+    while next_cursor is not None:
+        response = client.get(
+            f"{settings.API_V1_STR}/collections?cursor={next_cursor}",
+            headers={"Authorization": "Bearer the_access_token"},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        response_json = response.json()
+        results += response_json["results"]
+        next_cursor = response_json["meta"]["nextCursor"]
+        last_prev_cursor = response_json["meta"]["prevCursor"]
+        last_result = response_json["results"]
+    assert results == [
+        {
+            "id": d.id,
+            "name": d.name,
+            "updatedAt": d.updated_at.isoformat(),
+            "createdAt": d.created_at.isoformat(),
+            "ownerId": d.owner_id,
+        }
+        for d in sorted(fixture_collections["testuser_collections"], key=lambda d: d.cursor_value, reverse=True)
+    ]
+    results = last_result
+    prev_cursor = last_prev_cursor
+    while prev_cursor is not None:
+        response = client.get(
+            f"{settings.API_V1_STR}/collections?cursor={prev_cursor}",
+            headers={"Authorization": "Bearer the_access_token"},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        response_json = response.json()
+        results = response_json["results"] + results
+        prev_cursor = response_json["meta"]["prevCursor"]
+    assert results == [
+        {
+            "id": d.id,
+            "name": d.name,
+            "updatedAt": d.updated_at.isoformat(),
+            "createdAt": d.created_at.isoformat(),
+            "ownerId": d.owner_id,
+        }
+        for d in sorted(fixture_collections["testuser_collections"], key=lambda d: d.cursor_value, reverse=True)
+    ]

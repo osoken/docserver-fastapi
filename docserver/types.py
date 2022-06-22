@@ -48,4 +48,4 @@ class EncodedCursor(str):
         return cls(v)
 
     def decode_cursor(self) -> DecodedCursor:
-        return DecodedCursor(utils.parse_cursor(utils.decode_cursor(self)))
+        return DecodedCursor(*utils.parse_cursor(utils.decode_cursor(self)))
