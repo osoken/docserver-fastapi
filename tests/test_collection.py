@@ -285,3 +285,18 @@ def test_retrieve_collection_returns_404_if_no_such_collection(
         headers={"Authorization": "Bearer the_access_token"},
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_retrieve_collection_returns_404_if_other_users_collection(
+    mocker, client, settings, fixture_users, fixture_collections
+):
+    from docserver import utils
+
+    decode = mocker.patch(
+        "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
+    )
+    response = client.get(
+        f"{settings.API_V1_STR}/collections/{fixture_collections['testuser2_collections'][1].id}",
+        headers={"Authorization": "Bearer the_access_token"},
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND

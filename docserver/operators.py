@@ -156,4 +156,8 @@ def list_collections(db: Session, user: models.User, cursor: Optional[types.Enco
 
 
 def retrieve_collection(db: Session, user: models.User, collection_id: schema.ShortUUID):
-    return db.query(models.Collection).get(collection_id)
+    return (
+        db.query(models.Collection)
+        .filter(models.Collection.owner_id == user.id, models.Collection.id == collection_id)
+        .first()
+    )
