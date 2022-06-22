@@ -248,7 +248,15 @@ def fixture_users(factories) -> Generator:
         created_at=datetime(2022, 6, 5, 14, 51, 35),
         updated_at=datetime(2022, 6, 9, 12, 11, 15),
     )
-    yield {"testuser": testuser}
+    testuser2 = factories.UserFactory(
+        id="0123456789abcdefABCDEG",
+        username="testuser2",
+        email="test2@somewhere.com",
+        hashed_password=schema._get_hashed_value("p@ssW0rd"),
+        created_at=datetime(2022, 6, 6, 14, 51, 35),
+        updated_at=datetime(2022, 6, 10, 12, 11, 15),
+    )
+    yield {"testuser": testuser, "testuser2": testuser2}
     factories.UserFactory._meta.sqlalchemy_session.close()
 
 
@@ -269,4 +277,11 @@ def fixture_collections(factories, fixture_users) -> Generator:
         for _ in range(123):
             testuser_collections.append(factories.CollectionFactory(owner_id=fixture_users["testuser"].id))
             fdt.tick(delta=timedelta(minutes=1))
-    yield {"testuser_collections": testuser_collections}
+    testuser2_collections = []
+    dt = datetime(2022, 6, 12, 12, 34, 56, 789012)
+    with freezegun.freeze_time(dt) as fdt:
+        for _ in range(4):
+            testuser2_collections.append(factories.CollectionFactory(owner_id=fixture_users["testuser2"].id))
+            fdt.tick(delta=timedelta(minutes=2))
+
+    yield {"testuser_collections": testuser_collections, "testuser2_collections": testuser2_collections}
