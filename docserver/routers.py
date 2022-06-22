@@ -119,7 +119,7 @@ def generate_router(
             updated_at=current_user.updated_at,
         )
 
-    @router.post("/collections", response_model=schema.CollectionDetailResponse)
+    @router.post("/collections", response_model=schema.CollectionRetrieveResponse)
     def create_collection(
         data: schema.CollectionCreateQuery,
         db: Session = Depends(session_handler.get_db),
@@ -134,5 +134,16 @@ def generate_router(
         current_user: models.User = Depends(get_current_user),
     ):
         return operators.list_collections(db, current_user, cursor=cursor)
+
+    @router.get("/collections/{collection_id}", response_model=schema.CollectionRetrieveResponse)
+    def retrieve_collection(
+        collection_id: schema.ShortUUID,
+        db: Session = Depends(session_handler.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        res = operators.retrieve_collection(db, current_user, collection_id=collection_id)
+        if res is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such collection")
+        return schema.CollectionRetrieveResponse.from_orm(res)
 
     return router

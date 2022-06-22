@@ -117,7 +117,7 @@ class LoginResponse(BaseModel):
     refresh_token: str
 
 
-class CollectionDetailResponse(GenericCamelModel):
+class CollectionRetrieveResponse(GenericCamelModel):
     id: ShortUUID
     name: str
     owner_id: ShortUUID
@@ -136,15 +136,13 @@ class CollectionListMeta(GenericCamelModel):
 
 class CollectionListResponse(GenericCamelModel):
     meta: CollectionListMeta
-    results: List[CollectionDetailResponse]
+    results: List[CollectionRetrieveResponse]
 
 
 class DocServerJSONEncoder(JSONEncoder):
     def default(self, o):
         if isinstance(o, SecretStr):
             return o.get_secret_value()
-        if isinstance(o, Cursor):
-            return str(o)
 
         return super(DocServerJSONEncoder, self).default(o)
 

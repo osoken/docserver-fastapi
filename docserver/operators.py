@@ -153,3 +153,7 @@ def list_collections(db: Session, user: models.User, cursor: Optional[types.Enco
         "results": list(res),
     }
     return res
+
+
+def retrieve_collection(db: Session, user: models.User, collection_id: schema.ShortUUID):
+    return db.query(models.Collection).get(collection_id)

@@ -240,3 +240,48 @@ def test_list_collection_iterate_all(mocker, client, settings, fixture_users, fi
         }
         for d in sorted(fixture_collections["testuser_collections"], key=lambda d: d.cursor_value, reverse=True)
     ]
+
+
+def test_retrieve_collection_fails_if_no_valid_token_provided(client, settings, factories, fixture_collections):
+    query = factories.CollectionCreateQueryFactory.build()
+    response = client.get(
+        f"{settings.API_V1_STR}/collections/{fixture_collections['testuser_collections'][0]}",
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_retrieve_collection(mocker, client, settings, fixture_users, fixture_collections):
+    decode = mocker.patch(
+        "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
+    )
+    response = client.get(
+        f"{settings.API_V1_STR}/collections/{fixture_collections['testuser_collections'][12].id}",
+        headers={"Authorization": "Bearer the_access_token"},
+    )
+    expected = fixture_collections['testuser_collections'][12]
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == {
+        "id": expected.id,
+        "name": expected.name,
+        "updatedAt": expected.updated_at.isoformat(),
+        "createdAt": expected.created_at.isoformat(),
+        "ownerId": expected.owner_id,
+    }
+
+
+def test_retrieve_collection_returns_404_if_no_such_collection(
+    mocker, client, settings, fixture_users, fixture_collections
+):
+    from docserver import utils
+
+    decode = mocker.patch(
+        "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
+    )
+    cid = utils.gen_uuid()
+    while cid in set(d.id for d in fixture_collections["testuser_collections"]):
+        cid = utils.gen_uuid()
+    response = client.get(
+        f"{settings.API_V1_STR}/collections/{cid}",
+        headers={"Authorization": "Bearer the_access_token"},
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
