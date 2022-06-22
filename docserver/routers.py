@@ -129,9 +129,10 @@ def generate_router(
 
     @router.get("/collections", response_model=schema.CollectionListResponse)
     def list_collections(
+        cursor: Optional[types.EncodedCursor] = None,
         db: Session = Depends(session_handler.get_db),
         current_user: models.User = Depends(get_current_user),
     ):
-        return operators.list_collections(db, current_user, None)
+        return operators.list_collections(db, current_user, cursor=cursor)
 
     return router

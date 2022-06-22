@@ -89,3 +89,95 @@ def test_list_collection_returns_first_ten_collections(mocker, client, settings,
             for d in fixture_collections["testuser_collections"][-1:-11:-1]
         ],
     }
+
+
+def test_list_collection_returns_next_ten_collections_with_next_cursor(
+    mocker, client, settings, fixture_users, fixture_collections
+):
+    decode = mocker.patch(
+        "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
+    )
+    cursor = MagicMock(spec=types.DecodedCursor)
+    cursor.direction = "n"
+    cursor.cursor_value = fixture_collections["testuser_collections"][-11].cursor_value
+    mocker.patch("docserver.types.DecodedCursor.encode_cursor", side_effect=["the_next_next_cursor", "the_prev_cursor"])
+    mocker.patch("docserver.types.EncodedCursor.decode_cursor", return_value=cursor)
+    mocker.patch("docserver.utils.decode_cursor")
+    mocker.patch("docserver.utils.parse_cursor")
+    DecodedCursor_init = mocker.patch("docserver.types.DecodedCursor.__init__", return_value=None)
+
+    response = client.get(
+        f"{settings.API_V1_STR}/collections?cursor=the_next_cursor",
+        headers={"Authorization": "Bearer the_access_token"},
+    )
+    assert response.status_code == status.HTTP_200_OK
+    decode.assert_called_once_with("the_access_token", key=settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    DecodedCursor_init.assert_has_calls(
+        [
+            call("n", fixture_collections["testuser_collections"][-21].cursor_value),
+            call("p", fixture_collections["testuser_collections"][-10].cursor_value),
+        ]
+    )
+    assert response.json() == {
+        "meta": {
+            "count": 123,
+            "nextCursor": "the_next_next_cursor",
+            "prevCursor": "the_prev_cursor",
+        },
+        "results": [
+            {
+                "id": d.id,
+                "name": d.name,
+                "updatedAt": d.updated_at.isoformat(),
+                "createdAt": d.created_at.isoformat(),
+                "ownerId": d.owner_id,
+            }
+            for d in fixture_collections["testuser_collections"][-11:-21:-1]
+        ],
+    }
+
+
+def test_list_collection_returns_next_ten_collections_with_prev_cursor(
+    mocker, client, settings, fixture_users, fixture_collections
+):
+    decode = mocker.patch(
+        "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
+    )
+    cursor = MagicMock(spec=types.DecodedCursor)
+    cursor.direction = "p"
+    cursor.cursor_value = fixture_collections["testuser_collections"][-31].cursor_value
+    mocker.patch("docserver.types.DecodedCursor.encode_cursor", side_effect=["the_next_cursor", "the_prev_prev_cursor"])
+    mocker.patch("docserver.types.EncodedCursor.decode_cursor", return_value=cursor)
+    mocker.patch("docserver.utils.decode_cursor")
+    mocker.patch("docserver.utils.parse_cursor")
+    DecodedCursor_init = mocker.patch("docserver.types.DecodedCursor.__init__", return_value=None)
+
+    response = client.get(
+        f"{settings.API_V1_STR}/collections?cursor=the_prev_cursor",
+        headers={"Authorization": "Bearer the_access_token"},
+    )
+    assert response.status_code == status.HTTP_200_OK
+    decode.assert_called_once_with("the_access_token", key=settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    DecodedCursor_init.assert_has_calls(
+        [
+            call("n", fixture_collections["testuser_collections"][-32].cursor_value),
+            call("p", fixture_collections["testuser_collections"][-21].cursor_value),
+        ]
+    )
+    assert response.json() == {
+        "meta": {
+            "count": 123,
+            "nextCursor": "the_next_cursor",
+            "prevCursor": "the_prev_prev_cursor",
+        },
+        "results": [
+            {
+                "id": d.id,
+                "name": d.name,
+                "updatedAt": d.updated_at.isoformat(),
+                "createdAt": d.created_at.isoformat(),
+                "ownerId": d.owner_id,
+            }
+            for d in fixture_collections["testuser_collections"][-22:-32:-1]
+        ],
+    }

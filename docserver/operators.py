@@ -112,12 +112,24 @@ def list_collections(db: Session, user: models.User, cursor: Optional[types.Enco
     if cursor is not None:
         decoded_cursor = cursor.decode_cursor()
         if decoded_cursor.direction == "n":
-            q = q.filter(models.Collection.cursor_value <= decoded_cursor.cursor_value)
+            res = list(
+                q.filter(models.Collection.cursor_value <= decoded_cursor.cursor_value)
+                .order_by(models.Collection.cursor_value.desc())
+                .limit(page_size)
+            )
         elif decoded_cursor.direction == "p":
-            q = q.filter(models.Collection.cursor_value >= decoded_cursor.cursor_value)
+            res = sorted(
+                q.filter(models.Collection.cursor_value >= decoded_cursor.cursor_value)
+                .order_by(models.Collection.cursor_value)
+                .limit(page_size),
+                key=lambda d: d.cursor_value,
+                reverse=True,
+            )
         else:
             raise ValueError("invalid direction")
-    res = list(q.order_by(models.Collection.cursor_value.desc()).limit(page_size))
+    else:
+        res = list(q.order_by(models.Collection.cursor_value.desc()).limit(page_size))
+
     if len(res) == 0:
         b0 = None
         b1 = None
