@@ -132,6 +132,79 @@ class DocServerTestClient(TestClient):
             cert=cert,
         )
 
+    def put(
+        self,
+        url,
+        data=None,
+        json=None,
+        *,
+        params=None,
+        headers=None,
+        cookies=None,
+        files=None,
+        auth=None,
+        timeout=None,
+        allow_redirects=None,
+        proxies=None,
+        hooks=None,
+        stream=None,
+        verify=None,
+        cert=None,
+    ):
+        if json is not None:
+            return super().put(
+                url,
+                schema.json_encoder.encode(json),
+                None,
+                params=params,
+                headers=headers,
+                cookies=cookies,
+                files=files,
+                auth=auth,
+                timeout=timeout,
+                allow_redirects=allow_redirects,
+                proxies=proxies,
+                hooks=hooks,
+                stream=stream,
+                verify=verify,
+                cert=cert,
+            )
+        if data is not None and isinstance(data, BaseModel):
+            return super().put(
+                url,
+                data=schema.json_encoder.encode(data.dict()),
+                json=None,
+                params=params,
+                headers=headers,
+                cookies=cookies,
+                files=files,
+                auth=auth,
+                timeout=timeout,
+                allow_redirects=allow_redirects,
+                proxies=proxies,
+                hooks=hooks,
+                stream=stream,
+                verify=verify,
+                cert=cert,
+            )
+        return super().put(
+            url,
+            data,
+            json,
+            params=params,
+            headers=headers,
+            cookies=cookies,
+            files=files,
+            auth=auth,
+            timeout=timeout,
+            allow_redirects=allow_redirects,
+            proxies=proxies,
+            hooks=hooks,
+            stream=stream,
+            verify=verify,
+            cert=cert,
+        )
+
 
 @pytest.fixture(scope="session")
 def test_db() -> Generator:
@@ -201,6 +274,9 @@ def factories(db) -> Generator:
     class CollectionCreateQueryFactory(DocServerModelFactory):
         __model__ = schema.CollectionCreateQuery
 
+    class CollectionUpdateQueryFactory(DocServerModelFactory):
+        __model__ = schema.CollectionUpdateQuery
+
     class UserFactory(SQLAlchemyModelFactory):
         class Meta:
             model = models.User
@@ -229,6 +305,7 @@ def factories(db) -> Generator:
             self.UserFactory = UserFactory
             self.RefreshTokenQueryFactory = RefreshTokenQueryFactory
             self.CollectionCreateQueryFactory = CollectionCreateQueryFactory
+            self.CollectionUpdateQueryFactory = CollectionUpdateQueryFactory
             self.UserLoginQueryFactory = UserLoginQueryFactory
             self.RefreshTokenFactory = RefreshTokenFactory
             self.CollectionFactory = CollectionFactory

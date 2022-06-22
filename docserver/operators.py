@@ -161,3 +161,16 @@ def retrieve_collection(db: Session, user: models.User, collection_id: schema.Sh
         .filter(models.Collection.owner_id == user.id, models.Collection.id == collection_id)
         .first()
     )
+
+
+def update_collection(
+    db: Session, user: models.User, collection_id: schema.ShortUUID, data: schema.CollectionUpdateQuery
+):
+    collection = retrieve_collection(db, user, collection_id)
+    if collection is None:
+        return None
+    collection.name = data.name
+    db.add(collection)
+    db.commit()
+    db.refresh(collection)
+    return collection

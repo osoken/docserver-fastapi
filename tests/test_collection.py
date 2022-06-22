@@ -243,9 +243,8 @@ def test_list_collection_iterate_all(mocker, client, settings, fixture_users, fi
 
 
 def test_retrieve_collection_fails_if_no_valid_token_provided(client, settings, factories, fixture_collections):
-    query = factories.CollectionCreateQueryFactory.build()
     response = client.get(
-        f"{settings.API_V1_STR}/collections/{fixture_collections['testuser_collections'][0]}",
+        f"{settings.API_V1_STR}/collections/{fixture_collections['testuser_collections'][0].id}",
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -297,6 +296,75 @@ def test_retrieve_collection_returns_404_if_other_users_collection(
     )
     response = client.get(
         f"{settings.API_V1_STR}/collections/{fixture_collections['testuser2_collections'][1].id}",
+        headers={"Authorization": "Bearer the_access_token"},
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_update_collection_fails_if_no_valid_token_provided(client, settings, factories, fixture_collections):
+    query = factories.CollectionUpdateQueryFactory.build()
+    response = client.put(
+        f"{settings.API_V1_STR}/collections/{fixture_collections['testuser_collections'][0].id}",
+        data=query,
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_update_collection(mocker, client, settings, factories, fixture_users, fixture_collections):
+    query = factories.CollectionUpdateQueryFactory.build()
+    decode = mocker.patch(
+        "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
+    )
+    dt = datetime(2023, 1, 31, 12, 23, 34, 5678)
+    with freezegun.freeze_time(dt):
+        response = client.put(
+            f"{settings.API_V1_STR}/collections/{fixture_collections['testuser_collections'][12].id}",
+            data=query,
+            headers={"Authorization": "Bearer the_access_token"},
+        )
+        expected = fixture_collections['testuser_collections'][12]
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == {
+            "id": expected.id,
+            "name": query.name,
+            "updatedAt": dt.isoformat(),
+            "createdAt": expected.created_at.isoformat(),
+            "ownerId": expected.owner_id,
+        }
+
+
+def test_update_collection_returns_404_if_no_such_collection(
+    mocker, client, settings, factories, fixture_users, fixture_collections
+):
+    query = factories.CollectionUpdateQueryFactory.build()
+    from docserver import utils
+
+    decode = mocker.patch(
+        "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
+    )
+    cid = utils.gen_uuid()
+    while cid in set(d.id for d in fixture_collections["testuser_collections"]):
+        cid = utils.gen_uuid()
+    response = client.put(
+        f"{settings.API_V1_STR}/collections/{cid}",
+        data=query,
+        headers={"Authorization": "Bearer the_access_token"},
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_update_collection_returns_404_if_other_users_collection(
+    mocker, client, settings, factories, fixture_users, fixture_collections
+):
+    query = factories.CollectionUpdateQueryFactory.build()
+    from docserver import utils
+
+    decode = mocker.patch(
+        "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
+    )
+    response = client.put(
+        f"{settings.API_V1_STR}/collections/{fixture_collections['testuser2_collections'][1].id}",
+        data=query,
         headers={"Authorization": "Bearer the_access_token"},
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND

@@ -66,6 +66,10 @@ class CollectionCreateQuery(GenericCamelModel):
     name: str
 
 
+class CollectionUpdateQuery(CollectionCreateQuery):
+    ...
+
+
 class UserLoginQuery(GenericCamelModel):
     login_id: Union[UsernameString, EmailStr]
     password: PasswordString
