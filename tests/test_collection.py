@@ -3,7 +3,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, call
 
 import freezegun
-from docserver import types
+from docserver import models, types, utils
 from fastapi import status
 
 
@@ -16,15 +16,19 @@ def test_create_collection_fails_if_no_valid_token_provided(client, settings, fa
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-def test_create_collections(mocker, client, factories, settings, fixture_users):
+def test_create_collections(mocker, db, client, factories, settings, fixture_users):
     dt = datetime(2021, 1, 31, 12, 23, 34, 5678)
     decode = mocker.patch(
         "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
     )
-    mocker.patch("docserver.utils.suuid_generator.uuid", return_value="2123456789abcdefABCDEF")
+    target_id = "2123456789abcdefABCDEF"
+    mocker.patch("docserver.utils.suuid_generator.uuid", return_value=target_id)
+    query = factories.CollectionCreateQueryFactory.build()
+
+    sess = db.sessionmaker()
+    assert sess.query(models.Collection).get(target_id) is None
 
     with freezegun.freeze_time(dt):
-        query = factories.CollectionCreateQueryFactory.build()
         response = client.post(
             settings.API_V1_STR + "/collections", data=query, headers={"Authorization": "Bearer the_access_token"}
         )
@@ -34,9 +38,17 @@ def test_create_collections(mocker, client, factories, settings, fixture_users):
             "ownerId": fixture_users["testuser"].id,
             "createdAt": dt.isoformat(),
             "updatedAt": dt.isoformat(),
-            "id": "2123456789abcdefABCDEF",
+            "id": target_id,
         }
         decode.assert_called_once_with("the_access_token", key=settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+    x = sess.query(models.Collection).get(target_id)
+    assert x is not None
+    assert x.name == query.name
+    assert x.created_at == dt
+    assert x.updated_at == dt
+    assert x.owner_id == fixture_users["testuser"].id
+    sess.close()
 
 
 def test_list_collection_fails_if_no_valid_token_provided(client, settings, fixture_collections):
@@ -271,8 +283,6 @@ def test_retrieve_collection(mocker, client, settings, fixture_users, fixture_co
 def test_retrieve_collection_returns_404_if_no_such_collection(
     mocker, client, settings, fixture_users, fixture_collections
 ):
-    from docserver import utils
-
     decode = mocker.patch(
         "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
     )
@@ -308,19 +318,23 @@ def test_update_collection_fails_if_no_valid_token_provided(client, settings, fa
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-def test_update_collection(mocker, client, settings, factories, fixture_users, fixture_collections):
-    query = factories.CollectionUpdateQueryFactory.build()
+def test_update_collection(mocker, db, client, settings, factories, fixture_users, fixture_collections):
     decode = mocker.patch(
         "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
     )
+    expected = fixture_collections['testuser_collections'][12]
+    query = factories.CollectionUpdateQueryFactory.build(name=f"updated_{expected.name}")
+    sess = db.sessionmaker()
+    x0 = sess.query(models.Collection).get(expected.id)
+    before_cursor = x0.cursor_value
+    assert x0.name != query.name
     dt = datetime(2023, 1, 31, 12, 23, 34, 5678)
     with freezegun.freeze_time(dt):
         response = client.put(
-            f"{settings.API_V1_STR}/collections/{fixture_collections['testuser_collections'][12].id}",
+            f"{settings.API_V1_STR}/collections/{expected.id}",
             data=query,
             headers={"Authorization": "Bearer the_access_token"},
         )
-        expected = fixture_collections['testuser_collections'][12]
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == {
             "id": expected.id,
@@ -329,13 +343,17 @@ def test_update_collection(mocker, client, settings, factories, fixture_users, f
             "createdAt": expected.created_at.isoformat(),
             "ownerId": expected.owner_id,
         }
+    sess.refresh(x0)
+    assert x0.name == query.name
+    assert x0.updated_at == dt
+    assert x0.cursor_value != before_cursor
+    sess.close()
 
 
 def test_update_collection_returns_404_if_no_such_collection(
     mocker, client, settings, factories, fixture_users, fixture_collections
 ):
     query = factories.CollectionUpdateQueryFactory.build()
-    from docserver import utils
 
     decode = mocker.patch(
         "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
@@ -374,9 +392,9 @@ def test_delete_collection_fails_if_no_valid_token_provided(client, settings, fi
 
 
 def test_delete_collection(mocker, db, client, settings, fixture_users, fixture_collections):
-    from docserver import models
-
     target_id = fixture_collections['testuser_collections'][12].id
+    sess = db.sessionmaker()
+    assert sess.query(models.Collection).get(target_id) is not None
     decode = mocker.patch(
         "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
     )
@@ -385,17 +403,13 @@ def test_delete_collection(mocker, db, client, settings, fixture_users, fixture_
         headers={"Authorization": "Bearer the_access_token"},
     )
     assert response.status_code == status.HTTP_200_OK
-    sess = db.sessionmaker()
-    x = sess.query(models.Collection).get(target_id)
-    assert x is None
+    assert sess.query(models.Collection).get(target_id) is None
     sess.close()
 
 
 def test_delete_collection_returns_404_if_no_such_collection(
     mocker, client, settings, fixture_users, fixture_collections
 ):
-    from docserver import utils
-
     decode = mocker.patch(
         "docserver.operators.jwt.decode", return_value={"sub": f"userId:{fixture_users['testuser'].id}"}
     )
