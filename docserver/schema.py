@@ -75,6 +75,11 @@ class ItemCreateQuery(GenericCamelModel):
     data_type: DataTypeString
 
 
+class ItemUpdateQuery(GenericCamelModel):
+    body: Optional[Base64EncodedData]
+    data_type: Optional[DataTypeString]
+
+
 class UserLoginQuery(GenericCamelModel):
     login_id: Union[UsernameString, EmailStr]
     password: PasswordString

@@ -186,7 +186,20 @@ def generate_router(
     ):
         res = operators.retrieve_item(db, current_user, collection_id, item_id)
         if res is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such collection")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such item")
         return schema.ItemDetailResponse.from_orm(res)
+
+    @router.put("/collections/{collection_id}/items/{item_id}", response_model=schema.ItemHeaderResponse)
+    def retrieve_item(
+        collection_id: schema.ShortUUID,
+        item_id: schema.ShortUUID,
+        data: schema.ItemUpdateQuery,
+        db: Session = Depends(session_handler.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        res = operators.update_item(db, current_user, collection_id, item_id, data)
+        if res is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such item")
+        return schema.ItemHeaderResponse.from_orm(res)
 
     return router

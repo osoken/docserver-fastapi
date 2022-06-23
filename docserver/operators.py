@@ -201,3 +201,27 @@ def retrieve_item(db: Session, user: models.User, collection_id: schema.ShortUUI
         .filter(models.Item.collection_id == collection_id, models.Item.id == item_id, models.Item.owner_id == user.id)
         .first()
     )
+
+
+def update_item(
+    db: Session,
+    user: models.User,
+    collection_id: schema.ShortUUID,
+    item_id: schema.ShortUUID,
+    data: schema.ItemUpdateQuery,
+):
+    item = retrieve_item(db, user, collection_id, item_id)
+    if item is None:
+        return None
+    mutated = False
+    if data.data_type is not None:
+        item.data_type = data.data_type
+        mutated = True
+    if data.body is not None:
+        item.body = data.body.decode_to_binary()
+        mutated = True
+    if mutated:
+        db.add(item)
+        db.commit()
+        db.refresh(item)
+    return item
