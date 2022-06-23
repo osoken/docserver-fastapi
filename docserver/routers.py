@@ -171,10 +171,11 @@ def generate_router(
     @router.get("/collections/{collection_id}/items", response_model=schema.ItemListResponse)
     def list_items(
         collection_id: schema.ShortUUID,
+        cursor: Optional[types.EncodedCursor] = None,
         db: Session = Depends(session_handler.get_db),
         current_user: models.User = Depends(get_current_user),
     ):
-        res = operators.list_items(db, current_user, collection_id, cursor=None)
+        res = operators.list_items(db, current_user, collection_id, cursor=cursor)
         if res is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such collection")
         return res

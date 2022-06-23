@@ -250,8 +250,28 @@ def list_items(
     collection = retrieve_collection(db, user, collection_id)
     if collection is None:
         return None
+
     q = db.query(models.Item).filter(models.Item.owner_id == user.id, models.Item.collection_id == collection_id)
-    res = list(q.order_by(models.Item.cursor_value.desc()).limit(page_size))
+    if cursor is not None:
+        decoded_cursor = cursor.decode_cursor()
+        if decoded_cursor.direction == "n":
+            res = list(
+                q.filter(models.Item.cursor_value <= decoded_cursor.cursor_value)
+                .order_by(models.Item.cursor_value.desc())
+                .limit(page_size)
+            )
+        elif decoded_cursor.direction == "p":
+            res = sorted(
+                q.filter(models.Item.cursor_value >= decoded_cursor.cursor_value)
+                .order_by(models.Item.cursor_value)
+                .limit(page_size),
+                key=lambda d: d.cursor_value,
+                reverse=True,
+            )
+        else:
+            raise ValueError("invalid direction")
+    else:
+        res = list(q.order_by(models.Item.cursor_value.desc()).limit(page_size))
 
     if len(res) == 0:
         b0 = None
