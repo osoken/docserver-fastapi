@@ -168,4 +168,25 @@ def generate_router(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such collection")
         return schema.CollectionRetrieveResponse.from_orm(res)
 
+    @router.post("/collections/{collection_id}/items", response_model=schema.ItemHeaderResponse)
+    def create_item(
+        collection_id: schema.ShortUUID,
+        data: schema.ItemCreateQuery,
+        db: Session = Depends(session_handler.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        return operators.create_item(db, current_user, collection_id, data)
+
+    @router.get("/collections/{collection_id}/items/{item_id}", response_model=schema.ItemDetailResponse)
+    def retrieve_item(
+        collection_id: schema.ShortUUID,
+        item_id: schema.ShortUUID,
+        db: Session = Depends(session_handler.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        res = operators.retrieve_item(db, current_user, collection_id, item_id)
+        if res is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such collection")
+        return schema.ItemDetailResponse.from_orm(res)
+
     return router

@@ -10,7 +10,7 @@ from pydantic.generics import GenericModel
 
 from docserver import utils
 
-from .types import EncodedCursor
+from .types import Base64EncodedData, DataTypeString, EncodedCursor
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -68,6 +68,11 @@ class CollectionCreateQuery(GenericCamelModel):
 
 class CollectionUpdateQuery(CollectionCreateQuery):
     ...
+
+
+class ItemCreateQuery(GenericCamelModel):
+    body: Base64EncodedData
+    data_type: DataTypeString
 
 
 class UserLoginQuery(GenericCamelModel):
@@ -130,6 +135,22 @@ class CollectionRetrieveResponse(GenericCamelModel):
 
     class Config:
         orm_mode = True
+
+
+class ItemHeaderResponse(GenericCamelModel):
+    id: ShortUUID
+    data_type: DataTypeString
+    owner_id: ShortUUID
+    collection_id: ShortUUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
+class ItemDetailResponse(ItemHeaderResponse):
+    body: Base64EncodedData
 
 
 class CollectionListMeta(GenericCamelModel):

@@ -184,3 +184,20 @@ def delete_collection(db: Session, user: models.User, collection_id: schema.Shor
     db.delete(collection)
     db.commit()
     return res
+
+
+def create_item(db: Session, user: models.User, collection_id: schema.ShortUUID, data: schema.ItemCreateQuery):
+    item = models.Item(collection_id=collection_id, owner_id=user.id, data_type=data.data_type)
+    item.body = data.body.decode_to_binary()
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def retrieve_item(db: Session, user: models.User, collection_id: schema.ShortUUID, item_id: schema.ShortUUID):
+    return (
+        db.query(models.Item)
+        .filter(models.Item.collection_id == collection_id, models.Item.id == item_id, models.Item.owner_id == user.id)
+        .first()
+    )

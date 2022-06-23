@@ -1,3 +1,4 @@
+from base64 import urlsafe_b64encode
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Generator, Optional
 from uuid import uuid4
@@ -7,8 +8,9 @@ import pytest
 from docserver import config, models, schema, utils
 from docserver.app import generate_app
 from docserver.deps import SessionHandler
+from docserver.types import Base64EncodedData, DataTypeString
 from factory.alchemy import SQLAlchemyModelFactory
-from factory.fuzzy import FuzzyAttribute, FuzzyText
+from factory.fuzzy import FuzzyAttribute, FuzzyChoice, FuzzyText
 from fastapi import testclient
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
@@ -51,10 +53,14 @@ class TestSessionHandler(SessionHandler):
 
 
 class DocServerModelFactory(ModelFactory):
+    data_generator = FuzzyText(length=2048)
+
     @classmethod
     def get_provider_map(cls) -> Dict[Any, Callable]:
         m = super().get_provider_map()
         m[schema.PasswordString] = lambda: utils.gen_password(10)
+        m[Base64EncodedData] = lambda: urlsafe_b64encode(cls.data_generator.fuzz().encode("utf-8"))
+        m[DataTypeString] = FuzzyChoice(DataTypeString.valid_types).fuzz
         return m
 
 
@@ -116,8 +122,8 @@ class DocServerTestClient(TestClient):
             )
         return super().post(
             url,
-            data,
-            json,
+            data=data,
+            json=json,
             params=params,
             headers=headers,
             cookies=cookies,
@@ -189,8 +195,8 @@ class DocServerTestClient(TestClient):
             )
         return super().put(
             url,
-            data,
-            json,
+            data=data,
+            json=json,
             params=params,
             headers=headers,
             cookies=cookies,
@@ -277,6 +283,9 @@ def factories(db) -> Generator:
     class CollectionUpdateQueryFactory(DocServerModelFactory):
         __model__ = schema.CollectionUpdateQuery
 
+    class ItemCreateQueryFactory(DocServerModelFactory):
+        __model__ = schema.ItemCreateQuery
+
     class UserFactory(SQLAlchemyModelFactory):
         class Meta:
             model = models.User
@@ -299,6 +308,14 @@ def factories(db) -> Generator:
 
         name = FuzzyText()
 
+    class ItemFactory(SQLAlchemyModelFactory):
+        class Meta:
+            model = models.Item
+            sqlalchemy_session = db.sessionmaker
+            sqlalchemy_session_persistence = "commit"
+
+        data_type = FuzzyChoice(DataTypeString.valid_types)
+
     class Factories:
         def __init__(self):
             self.UserCreateQueryFactory = UserCreateQueryFactory
@@ -306,9 +323,11 @@ def factories(db) -> Generator:
             self.RefreshTokenQueryFactory = RefreshTokenQueryFactory
             self.CollectionCreateQueryFactory = CollectionCreateQueryFactory
             self.CollectionUpdateQueryFactory = CollectionUpdateQueryFactory
+            self.ItemCreateQueryFactory = ItemCreateQueryFactory
             self.UserLoginQueryFactory = UserLoginQueryFactory
             self.RefreshTokenFactory = RefreshTokenFactory
             self.CollectionFactory = CollectionFactory
+            self.ItemFactory = ItemFactory
 
     yield Factories()
     close_all_sessions()
@@ -351,7 +370,7 @@ def fixture_collections(factories, fixture_users) -> Generator:
     dt = datetime(2022, 6, 7, 12, 34, 56, 789012)
     testuser_collections = []
     with freezegun.freeze_time(dt) as fdt:
-        for _ in range(123):
+        for _ in range(23):
             testuser_collections.append(factories.CollectionFactory(owner_id=fixture_users["testuser"].id))
             fdt.tick(delta=timedelta(minutes=1))
     testuser2_collections = []
@@ -362,3 +381,29 @@ def fixture_collections(factories, fixture_users) -> Generator:
             fdt.tick(delta=timedelta(minutes=2))
 
     yield {"testuser_collections": testuser_collections, "testuser2_collections": testuser2_collections}
+
+
+@pytest.fixture(scope="function")
+def fixture_items(factories, fixture_users, fixture_collections) -> Generator:
+    dt = datetime(2022, 6, 8, 12, 34, 56, 789012)
+    testuser_items = {}
+    with freezegun.freeze_time(dt) as fdt:
+        for c in fixture_collections["testuser_collections"][:4]:
+            buf = []
+            for _ in range(25):
+                item = factories.ItemFactory(owner_id=fixture_users["testuser"].id, collection_id=c.id)
+                item.body = b"aaa"
+                buf.append(item)
+                fdt.tick(delta=timedelta(minutes=1))
+            testuser_items[c.id] = buf
+    testuser2_items = {}
+    dt = datetime(2022, 6, 14, 12, 34, 56, 789012)
+    with freezegun.freeze_time(dt) as fdt:
+        for c in fixture_collections["testuser2_collections"][:2]:
+            buf = []
+            for _ in range(12):
+                buf.append(factories.ItemFactory(owner_id=fixture_users["testuser2"].id, collection_id=c.id))
+                fdt.tick(delta=timedelta(minutes=1))
+            testuser2_items[c.id] = buf
+
+    yield {"testuser_items": testuser_items, "testuser2_items": testuser2_items}
