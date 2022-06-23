@@ -225,3 +225,13 @@ def update_item(
         db.commit()
         db.refresh(item)
     return item
+
+
+def delete_item(db: Session, user: models.User, collection_id: schema.ShortUUID, item_id: schema.ShortUUID):
+    item = retrieve_item(db, user, collection_id, item_id)
+    if item is None:
+        return None
+    res = item.id
+    db.delete(item)
+    db.commit()
+    return res

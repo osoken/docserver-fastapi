@@ -202,4 +202,15 @@ def generate_router(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such item")
         return schema.ItemHeaderResponse.from_orm(res)
 
+    @router.delete("/collections/{collection_id}/items/{item_id}")
+    def delete_item(
+        collection_id: schema.ShortUUID,
+        item_id: schema.ShortUUID,
+        db: Session = Depends(session_handler.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        res = operators.delete_item(db, current_user, collection_id, item_id)
+        if res is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such item")
+
     return router
