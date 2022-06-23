@@ -169,6 +169,17 @@ class CollectionListResponse(GenericCamelModel):
     results: List[CollectionRetrieveResponse]
 
 
+class ItemListMeta(GenericCamelModel):
+    count: int
+    next_cursor: Optional[EncodedCursor]
+    prev_cursor: Optional[EncodedCursor]
+
+
+class ItemListResponse(GenericCamelModel):
+    meta: ItemListMeta
+    results: List[ItemHeaderResponse]
+
+
 class DocServerJSONEncoder(JSONEncoder):
     def default(self, o):
         if isinstance(o, SecretStr):

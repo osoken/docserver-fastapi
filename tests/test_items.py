@@ -14,6 +14,23 @@ def test_create_item_fails_if_no_valid_token_provided(client, settings, factorie
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
+def test_create_returns_404_if_no_such_collection(
+    mocker, client, settings, factories, fixture_users, fixture_collections
+):
+    query = factories.ItemCreateQueryFactory.build()
+    user_id = fixture_users['testuser'].id
+    decode = mocker.patch("docserver.operators.jwt.decode", return_value={"sub": f"userId:{user_id}"})
+    cid = utils.gen_uuid()
+    while cid in set(d.id for d in fixture_collections["testuser_collections"]):
+        cid = utils.gen_uuid()
+    response = client.post(
+        f"{settings.API_V1_STR}/collections/{cid}/items",
+        data=query,
+        headers={"Authorization": "Bearer the_access_token"},
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
 def test_create_item(mocker, client, db, settings, factories, fixture_users, fixture_collections):
 
     dt = datetime(2021, 1, 31, 12, 23, 34, 5678)
@@ -313,6 +330,38 @@ def test_delete_item_returns_404_if_other_collections_item(
     item = fixture_items["testuser_items"][other_collection.id][0]
     response = client.delete(
         f"{settings.API_V1_STR}/collections/{collection.id}/items/{item.id}",
+        headers={"Authorization": "Bearer the_access_token"},
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_list_items_fails_if_no_valid_token_provided(client, settings, fixture_collections, fixture_items):
+    collection = fixture_collections["testuser_collections"][0]
+    response = client.get(f"{settings.API_V1_STR}/collections/{collection.id}/items")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_list_items_returns_404_if_other_users_collection(
+    mocker, client, settings, fixture_users, fixture_collections, fixture_items
+):
+    user = fixture_users['testuser']
+    decode = mocker.patch("docserver.operators.jwt.decode", return_value={"sub": f"userId:{user.id}"})
+    collection = fixture_collections["testuser2_collections"][0]
+    response = client.get(
+        f"{settings.API_V1_STR}/collections/{collection.id}/items",
+        headers={"Authorization": "Bearer the_access_token"},
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_list_items_returns_404_if_no_such_collection(
+    mocker, client, settings, fixture_users, fixture_collections, fixture_items
+):
+    user = fixture_users['testuser']
+    decode = mocker.patch("docserver.operators.jwt.decode", return_value={"sub": f"userId:{user.id}"})
+    collection = fixture_collections["testuser2_collections"][0]
+    response = client.get(
+        f"{settings.API_V1_STR}/collections/{collection.id}/items",
         headers={"Authorization": "Bearer the_access_token"},
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND

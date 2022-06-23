@@ -187,7 +187,10 @@ def delete_collection(db: Session, user: models.User, collection_id: schema.Shor
 
 
 def create_item(db: Session, user: models.User, collection_id: schema.ShortUUID, data: schema.ItemCreateQuery):
-    item = models.Item(collection_id=collection_id, owner_id=user.id, data_type=data.data_type)
+    collection = retrieve_collection(db, user, collection_id)
+    if collection is None:
+        return None
+    item = models.Item(collection_id=collection.id, owner_id=user.id, data_type=data.data_type)
     item.body = data.body.decode_to_binary()
     db.add(item)
     db.commit()
@@ -234,4 +237,34 @@ def delete_item(db: Session, user: models.User, collection_id: schema.ShortUUID,
     res = item.id
     db.delete(item)
     db.commit()
+    return res
+
+
+def list_items(
+    db: Session,
+    user: models.User,
+    collection_id: schema.ShortUUID,
+    cursor: Optional[types.EncodedCursor] = None,
+    page_size: int = 10,
+):
+    collection = retrieve_collection(db, user, collection_id)
+    if collection is None:
+        return None
+    q = db.query(models.Item).filter(models.Item.owner_id == user.id, models.Item.collection_id == collection_id)
+    res = list(q.order_by(models.Item.cursor_value.desc()).limit(page_size))
+
+    if len(res) == 0:
+        b0 = None
+        b1 = None
+    else:
+        b0 = q.filter(models.Item.cursor_value < res[-1].cursor_value).order_by(models.Item.cursor_value.desc()).first()
+        b1 = q.filter(models.Item.cursor_value > res[0].cursor_value).order_by(models.Item.cursor_value).first()
+    res = {
+        "meta": {
+            "count": q.count(),
+            "next_cursor": types.DecodedCursor("n", b0.cursor_value) if b0 is not None else None,
+            "prev_cursor": types.DecodedCursor("p", b1.cursor_value) if b1 is not None else None,
+        },
+        "results": list(res),
+    }
     return res
