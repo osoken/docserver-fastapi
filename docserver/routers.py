@@ -187,7 +187,10 @@ def generate_router(
         db: Session = Depends(session_handler.get_db),
         current_user: models.User = Depends(get_current_user),
     ):
-        res = operators.create_item(db, current_user, collection_id, data)
+        try:
+            res = operators.create_item(db, current_user, collection_id, data)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="invalid data")
         if res is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such collection")
         return res
@@ -212,7 +215,10 @@ def generate_router(
         db: Session = Depends(session_handler.get_db),
         current_user: models.User = Depends(get_current_user),
     ):
-        res = operators.update_item(db, current_user, collection_id, item_id, data)
+        try:
+            res = operators.update_item(db, current_user, collection_id, item_id, data)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="invalid data")
         if res is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such item")
         return schema.ItemHeaderResponse.from_orm(res)

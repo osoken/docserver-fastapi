@@ -1,3 +1,4 @@
+import binascii
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from logging.config import valid_ident
 from typing import Any
@@ -55,7 +56,11 @@ class EncodedCursor(str):
 
 class Base64EncodedData(str):
     def decode_to_binary(self) -> bytes:
-        return urlsafe_b64decode(self)
+        try:
+            return urlsafe_b64decode(self)
+        except binascii.Error as _:
+            ...
+        raise ValueError("invalid data")
 
     @classmethod
     def __get_validators__(cls):
